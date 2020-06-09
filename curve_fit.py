@@ -94,17 +94,22 @@ def LMA(x,y):
         di = 2 * (p / (1+np.sqrt(ap)))
         return di
 
-    def abrToADT(abr):
-        """Convert general circle equation parameters a,b, and r 
-        (circle center and radius) into parameters A,D, and theta 
+    def abr_to_adt(abr):
+        """Convert natural circle parameters a,b, and r into LMA parameters A,D, and theta 
         used in the paper.
 
         Parameters
         ----------
-        abr : array like, where
-            abr[0] : circle center x-coordinate
-            abr[1] : circle center y-coordinate
-            abr[2] : circle radius
+            abr : array like, where
+                abr[0] : circle center x-coordinate
+                abr[1] : circle center y-coordinate
+                abr[2] : circle radius
+        
+        Returns
+        -------
+            A : float
+            D : float
+            theta : float
         """
 
         a = abr[0]
@@ -127,7 +132,7 @@ def LMA(x,y):
     def f(abr):
         """Function to be minimized F = sum(d_i²)."""
 
-        A,D,theta = abrToADT(abr)
+        A,D,theta = abr_to_adt(abr)
         dist = di(A,D,theta)
         return dist*dist
 
@@ -135,7 +140,7 @@ def LMA(x,y):
     def jac(abr):
         """Jacobian of f as presented in the paper section 3.2."""
 
-        A,D,theta = abrToADT(abr)
+        A,D,theta = abr_to_adt(abr)
         u = ui(x,y,theta)
         z = zi(x,y)
         E = EE(A,D)
