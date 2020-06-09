@@ -183,3 +183,6 @@ def LMA(x,y):
         """
         A,B,_,_,_ = stats.linregress(y, x)
         return 1/A,-B/A
+
+if __name__ == '__main__':
+    print("curve_fit.py called as script. No need to run anything.")
