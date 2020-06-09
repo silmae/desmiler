@@ -48,7 +48,9 @@ def LSF(x,y):
     return a,b,R,residu
 
 def LMA(x,y):
-    """Implements LMA algorithm from Chernov 2008.
+    """Implements LMA algorithm from Chernov 2008 "Least squares fitting of circles and lines" 
+    
+    available at http://arxiv.org/abs/cs.CV/0301001.
 
     Parameters
     ----------
@@ -119,13 +121,15 @@ def LMA(x,y):
         B = - 2*A*a
         C = - 2*A*b
         D = (B*B + C*C - 1) / (4*A)
-        # Not sure how the theta should be calculated. 
-        # These are derived from the two equations given when theta is defined:
-        # B = sqrt(1+4AD) cos(theta), C = sqrt(1+4AD) sin(theta)
-        #theta = math.acos(B / (math.sqrt(1+4*A*D))) # from B
-        #theta = math.asin(C / (math.sqrt(1+4*A*D))) # from C
-        # The following form for calculating theta is used in PygMag library, 
-        # so it might be correct. It gives the same result as from B.
+        """
+        The paper was not too clear how to convert from B and C to theta (sec. 3.2).
+        In PygMag library the conversion is implemented as theta = arccos(-a / np.sqrt(a*a + b*b)), 
+        which produces the same result as using acos(B / (sqrt(1+4*A*D))). 
+
+        Original definition for theta in the paper is:         
+
+            B = sqrt(1+4AD) cos(theta), C = sqrt(1+4AD) sin(theta)
+        """
         theta = np.arccos(-a / np.sqrt(a*a + b*b))
         return A,D,theta
 
