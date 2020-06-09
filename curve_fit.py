@@ -1,3 +1,4 @@
+import scipy.stats as stats
 import scipy.optimize as optimize
 import numpy as np
 import math
@@ -154,3 +155,26 @@ def LMA(x,y):
     # as proposed in the paper.
     res = optimize.least_squares(f, (a,b,r), jac=jac, method='lm')
     return res.x[0], res.x[1], res.x[2], float('Nan')
+
+    def line_fit(x,y):
+        """Fit a least squares line to data.
+
+        Inverted to fit almost vertical line as suggsted here:
+        https://stats.stackexchange.com/questions/57685/line-of-best-fit-linear-regression-over-vertical-line
+
+        Parameters
+        ----------
+            x : list 
+                List of x coordinates
+            x : list 
+                List of u coordinates
+
+        Returns
+        -------
+            a : float
+                a in line equation x = ay + b
+            b : float
+                b in line equation x = ay + b
+        """
+        A,B,_,_,_ = stats.linregress(y, x)
+        return 1/A,-B/A
