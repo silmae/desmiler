@@ -89,8 +89,6 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
     -------
         spectral_line_list
             A list of SpectralLine objects.
-        count_rejected
-            How many rows were rejected because of wrong peak count.
 
     """
 
@@ -100,7 +98,6 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
     rowList = []
     accepted_row_index = []
     spectral_line_list = []
-    count_rejected = 0
 
     # Iterate frame rows to find peaks from given locations on each row.
     for i in range(peak_light_frame.y.size):
@@ -111,24 +108,26 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
         if len(rowPeaks) == len(location_estimates):
             accepted_row_index.append(i)
             rowList.append(rowPeaks)
-        else:
-            count_rejected += 1
 
+    rowList = np.asarray(rowList)
+    accepted_row_index = np.asarray(accepted_row_index)
     # Once each row that succesfully found same amount of peaks that there are location_estimates,
     # we can form the actual spectral line objects.
-    for i,rowPeaks in enumerate(rowList):
-            line = SpectralLine(rowPeaks,accepted_row_index) 
+    for i in range(len(rowList[0])):
+            x = rowList[:,i]
+            y = accepted_row_index
+            line = SpectralLine(x,y) 
             # Discard lines with too small radius. They are false alarms.
-            if line.r > peak_light_frame.x.size:
+            if line.circ_r > peak_light_frame.x.size:
                 spectral_line_list.append(line)
 
     if len(spectral_line_list) < 1:
         raise RuntimeWarning(f"All spectral lines were ill formed.")
 
-    return spectral_line_list, count_rejected
+    return spectral_line_list
 
 
-def construct_shift_matrix(spectral_lines, w):
+def construct_shift_matrix(spectral_lines, w, h):
     """Constructs a desmiling shift distance matrix.
 
     Parameters
@@ -213,7 +212,7 @@ def _multi_circle_shift(shift_matrix, spectral_lines, w):
         shift_linear_fit = f(row)
 
         for l,d in enumerate(shift_linear_fit):
-            shift_matrix.values[x,l] = d
+            shift_matrix.values[row_idx,l] = d
 
     return shift_matrix
 
@@ -293,8 +292,8 @@ def _shift_matrix_to_index_matrix(shift_matrix):
 
     for x in range(shift_matrix.x.size):
         for y in range(shift_matrix.y.size):
-            index_x[x,y] = int(round(y + shift_matrix.values[x,y]))
-            index_y[x,y] = x
+            index_x[y,x] = int(round(x + shift_matrix.values[y,x]))
+            index_y[y,x] = y
 
     # Clamp so that indices won't go out of bounds.
     index_x = np.clip(index_x, 0, x-1)

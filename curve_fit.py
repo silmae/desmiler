@@ -1,5 +1,6 @@
 import scipy.stats as stats
 import scipy.optimize as optimize
+import scipy as sc
 import numpy as np
 import math
 
@@ -28,7 +29,7 @@ def LSF(x,y):
 
     def di(a, b):
         """ Calculate the distance of each 2D points from the center (a, b) """
-        return math.sqrt((x-a)**2 + (y-b)**2)
+        return sc.sqrt((x-a)**2 + (y-b)**2)
 
     def f(c):
         """ Calculate the algebraic distance between the data points and the 

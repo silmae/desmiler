@@ -46,4 +46,4 @@ class SpectralLine:
         self.location = np.mean(x)
         self.circ_cntr_x, self.circ_cntr_y, self.circ_r,_ = cf.LSF(x,y)
         self.line_a, self.line_b = cf.line_fit(x,y)
-        self.tilt_angle_degree_abs = 90 - abs(math.atan(self.a) * 57.2957795)
+        self.tilt_angle_degree_abs = 90 - abs(math.atan(self.line_a) * 57.2957795)

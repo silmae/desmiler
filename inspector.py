@@ -84,17 +84,17 @@ def plot_frame(frame, spectral_lines=None, plot_fit_points=False, plot_circ_fit=
 
     if spectral_lines is not None:
         # Colormap
-        cm = cm.get_cmap('PiYG')
+        cmap = cm.get_cmap('PiYG')
     
-        for i,line in enumerate(spectral_lines):
+        for i,sl in enumerate(spectral_lines):
             # Change color for every circle
-            color = cm(1 / (i+1) )
+            color = cmap(1 / (i+1) )
             if plot_circ_fit:
-                ax.add_artist(plt.Circle((line.circ_cntr_x, line.circ_cntr_y), line.circ_r, color=color, fill=False))
+                ax.add_artist(plt.Circle((sl.circ_cntr_x, sl.circ_cntr_y), sl.circ_r, color=color, fill=False))
             if plot_fit_points:
-                ax.plot(line.x,line.y,'.',linewidth=1,color=color)
+                ax.plot(sl.x,sl.y,'.',linewidth=1,color=color)
             if plot_line_fit:
-                liny = line.a*line.x+line.b
-                ax.plot(line.x, liny, linewidth=1,color=color)
+                liny = sl.line_a*sl.x+sl.line_b
+                ax.plot(sl.x, liny, linewidth=1,color=color)
 
     plt.show()
