@@ -1,3 +1,4 @@
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -50,4 +51,50 @@ def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=No
         if desmiled_bandpass is not None:
             ax[1].plot(xData, desmiled_bandpass[0],linewidth=lw,color='b')
             ax[1].plot(xData, desmiled_bandpass[1],linewidth=lw,color='r')
+    plt.show()
+
+def plot_frame(frame, spectral_lines=None, plot_fit_points=False, plot_circ_fit=False, 
+                plot_line_fit=False, window_name='Frame plot'):
+    """Plots the given frame with matplotlib.
+
+    If spectral lines are given, they can be plotted on top of the frame with a 
+    few different styles. Name given here can be used to close the plot window.
+
+    Parameters
+    ----------
+    frame : DataArray
+        Frame to be plotted.
+   
+    spectral_lines : list of SpectralLine objects
+        If given, frame is overlayed with spectral lines.
+    plot_fit_points:
+        If True, frame is overlayed with points used to fit the spectral line.
+    plot_circ_fit:
+        If True, frame is overlayed with fitted circle arcs.
+    plot_line_fit:
+        If True, frame is overlayed with fitted lines. 
+    window_name : string,int
+        Name for the plotting window. Use plt.close(<window_name>) to close the window 
+        if needed.    
+    """
+
+    fig,ax = plt.subplots(num=window_name)
+    ax.imshow(frame, origin='lower')
+    ax.set_ylim(0,frame.y.size)
+
+    if spectral_lines is not None:
+        # Colormap
+        cm = cm.get_cmap('PiYG')
+    
+        for i,line in enumerate(spectral_lines):
+            # Change color for every circle
+            color = cm(1 / (i+1) )
+            if plot_circ_fit:
+                ax.add_artist(plt.Circle((line.circ_cntr_x, line.circ_cntr_y), line.circ_r, color=color, fill=False))
+            if plot_fit_points:
+                ax.plot(line.x,line.y,'.',linewidth=1,color=color)
+            if plot_line_fit:
+                liny = line.a*line.x+line.b
+                ax.plot(line.x, liny, linewidth=1,color=color)
+
     plt.show()
