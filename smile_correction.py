@@ -145,7 +145,7 @@ def construct_shift_matrix(spectral_lines, w):
     Returns
     -------
     shift_matrix : Xarray DataArray
-        Desmile distance matrix. Use FrameTools.getDesmileIndexArrays() to 
+        Desmile distance matrix. Use FrameTools._shift_matrix_to_index_matrix() to 
         get new indices.
 
     Raises
@@ -216,3 +216,162 @@ def _multi_circle_shift(shift_matrix, spectral_lines, w):
             shift_matrix.values[x,l] = d
 
     return shift_matrix
+
+def apply_shift_matrix(target, shift_matrix, method=0, target_is_cube=True):
+    """ Apply shift matrix to a hyperspectral image cube or a single frame. 
+
+    Parameters
+    ----------
+        target : xarray Dataset
+            Cube or frame....
+        shift_matrix
+            The shift matrix to apply as given by construct_shift_matrix().
+        method
+            Either 0 for lookup table method or 1 for row interpolation method.
+            Interpolation is slower but more accurate.
+    
+    Returns
+    -------
+        xarray Dataset
+            Desmiled target as a dataset. 
+
+    Raises
+    ------
+        Value error if method other than 0 or 1.
+    """
+
+    if method == 0:
+        if target_is_cube:
+            desmiled_target = _lut_shift_cube(target, shift_matrix)
+        else:
+            desmiled_target = _lut_shift_frame(target, shift_matrix)
+    elif method == 1:
+        if target_is_cube:
+            desmiled_target = _intr_shift_cube(target, shift_matrix)
+        else:
+            desmiled_target = _intr_shift_frame(target, shift_matrix)
+    else:
+        raise ValueError(f"Method must be either 0 or 1. Was {method}.")
+
+    return desmiled_target
+
+def _lut_shift_cube(cube, shift_matrix):
+    """ Apply lookup table shift for a hyperspectral image cube. """
+
+    ix,iy  = _shift_matrix_to_index_matrix(shift_matrix)
+    vals = np.zeros_like(cube.reflectance)
+    for i,frame in enumerate(cube.reflectance.values):        
+        vals[i,:,:] = frame[iy, ix]
+    cube.reflectance.values = vals
+    return cube
+
+def _lut_shift_frame(frame, shift_matrix):
+    """ Apply lookup table shift for a single frame. """
+
+    ix, iy = _shift_matrix_to_index_matrix(shift_matrix)
+    frame.values[:,:] = frame.values[iy, ix]
+    return frame
+
+def _shift_matrix_to_index_matrix(shift_matrix):
+    """Builds and returns two numpy arrays which are to be used for reindexing.
+    
+    Parameters
+    ----------
+    shift_matrix : xarray DataArray
+        Shift distance array as returned by construct_shift_matrix().
+
+    Returns
+    -------
+    index_x : numpy matrix
+        New indexes for x direction.
+    index_y : numpy matrix
+        New indexes for y direction.
+    """
+
+    index_x = np.zeros_like(shift_matrix.values,dtype=int)
+    index_y = np.zeros_like(shift_matrix.values,dtype=int)
+
+    for x in range(shift_matrix.x.size):
+        for y in range(shift_matrix.y.size):
+            index_x[x,y] = int(round(y + shift_matrix.values[x,y]))
+            index_y[x,y] = x
+
+    # Clamp so that indices won't go out of bounds.
+    index_x = np.clip(index_x, 0, x-1)
+    return index_x,index_y
+
+def _intr_shift_frame(frame, shift_matrix):
+    """ Desmile frame using row-wise interpolation of 
+        pixel intensities. 
+    """
+
+    ds = xr.Dataset(
+        data_vars={
+            'frame'      :   frame,
+            'x_shift'    :   shift_matrix.values,
+            },
+    )
+
+    ds['desmiled_x'] =  ds.x -ds.x_shift 
+    ds.coords['new_x'] = np.linspace(0, frame.x.size, frame.x.size)
+    ds = ds.groupby('y').apply(_desmile_row)
+    
+    ds = ds.drop('x')
+    renames = {'new_x':'x'}
+    ds = ds.rename(renames)
+    
+    return ds.frame
+
+def _intr_shift_cube(cube, shift_matrix):
+    """ Desmile cube using row-wise interpolation of 
+        pixel intensities. 
+    """
+
+    ds = xr.Dataset(
+        data_vars={
+            'reflectance'      :   cube.reflectance,
+            'x_shift'    :   shift_matrix.values,
+            },
+    )
+    ds['desmiled_x'] =  ds.x - ds.x_shift 
+    ds.coords['new_x'] = np.linspace(0, cube.reflectance.x.size, cube.reflectance.x.size)
+    gouped = ds.groupby('y')
+    ds = gouped.apply(_desmile_row).astype(np.float32)
+    ds = ds.drop('x_shift')
+    ds = ds.drop('x')
+    renames = {'new_x':'x'}
+    ds = ds.rename(renames)
+    # Transpose back into original shape.
+    # I was unable to find out why apply() switches the 
+    # dimensions to (y, index, x)
+    ds = ds.transpose('index', 'y', 'x')
+    isNan = np.isnan(ds.reflectance.values).any()
+    if isNan:
+        print(f"Interpolatively shifted cube contains NaNs.")
+    isInf = np.isinf(ds.reflectance.values).any()
+    if isInf:
+        print(f"Interpolatively shifted cube contains Infs.")
+    # Fix NaNs before comparing for negatives.
+    if isNan or isInf:
+        ds.reflectance.values = np.nan_to_num(ds.reflectance.values).astype(np.float32)
+    isNeg = (ds.reflectance.values < 0.0).any()
+    if isNeg:
+        print(f"Interpolatively shifted cube contains negative values.")
+        ds.reflectance.values = np.clip(ds.reflectance.values, a_min=0.0).astype(np.float32)
+    if isNan or isInf or isNeg:
+        isNan = np.isnan(ds.reflectance.values).any()
+        print(f"After fixing: Interpolatively shifted cube contains NaNs ({isNan}).")
+        isInf = np.isinf(ds.reflectance.values).any()
+        print(f"After fixing: Interpolatively shifted cube contains Infs ({isInf}).")
+        isNeg = np.any(ds.reflectance.values < 0.0)    
+        print(f"After fixing: Interpolatively shifted cube contains negative values ({isNeg}).")
+    return ds
+
+def _desmile_row(row):
+    """ Used by interpolative shift only. """
+
+    row['x'] = row.desmiled_x
+    new_x = row.new_x
+    row = row.drop(['desmiled_x','new_x'])
+    row = row.interp(x=new_x, method='linear')
+    return row
