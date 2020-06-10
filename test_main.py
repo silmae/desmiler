@@ -14,7 +14,7 @@ if __name__ == '__main__':
     sl_list = smile.construct_spectral_lines(original_frame, test_frame_sl_locations, bp)
     shift_matrix = smile.construct_shift_matrix(sl_list, original_frame.x.size,  original_frame.y.size)
 
-    # desmiled_frame = smile.apply_shift_matrix(original_frame, shift_matrix, target_is_cube=False)
+    # desmiled_frame = smile.apply_shift_matrix(original_frame, shift_matrix, target_is_cube=False, method=0)
     # insp.plot_frame(original_frame, sl_list, True, True, True)
     # insp.plot_frame_spectra(original_frame, bp)
 

@@ -307,7 +307,7 @@ def _intr_shift_frame(frame, shift_matrix):
     ds = xr.Dataset(
         data_vars={
             'frame'      :   frame,
-            'x_shift'    :   shift_matrix.values,
+            'x_shift'    :   shift_matrix,
             },
     )
 
@@ -329,7 +329,7 @@ def _intr_shift_cube(cube, shift_matrix):
     ds = xr.Dataset(
         data_vars={
             'reflectance'      :   cube.reflectance,
-            'x_shift'    :   shift_matrix.values,
+            'x_shift'    :   shift_matrix,
             },
     )
     ds['desmiled_x'] =  ds.x - ds.x_shift 
