@@ -1,5 +1,8 @@
 import numpy as np
+from scipy.interpolate import interp1d
 import scipy.signal as signal
+import xarray as xr
+import math
 
 from spectral_line import SpectralLine
 
@@ -123,3 +126,93 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
         raise RuntimeWarning(f"All spectral lines were ill formed.")
 
     return spectral_line_list, count_rejected
+
+
+def construct_shift_matrix(spectral_lines, w):
+    """Constructs a desmiling shift distance matrix.
+
+    Parameters
+    ----------
+
+    spectralLines : List<SpectralLine>
+        A list of spectral lines to base the desmiling on as returned by 
+        FrameTools.getSpectralLines().
+    w: int
+        Width of the frame to be desmiled.
+    h: int
+        Height of the frame to be desmiled.
+    
+    Returns
+    -------
+    shift_matrix : Xarray DataArray
+        Desmile distance matrix. Use FrameTools.getDesmileIndexArrays() to 
+        get new indices.
+
+    Raises
+    ------
+    TypeError 
+        If given frame or spectralLines was None.
+    RuntimeError
+        If given spectralLines was empty.
+    """
+
+    shift_matrix = xr.DataArray(np.zeros((h,w)), dims=('y','x'))
+
+    # Switch to single circle method if only one spectral line was recieved.
+    if len(spectral_lines) == 1:
+        shift_matrix = _single_circle_shift(shift_matrix, spectral_lines, w)
+    else:
+        print("Desmiling with Interpolated Circles method.")
+        shift_matrix = _multi_circle_shift(shift_matrix, spectral_lines, w)
+
+    return shift_matrix
+
+def _single_circle_shift(shift_matrix, spectral_lines, w):
+
+    sl = spectral_lines[0]
+    for x in range(shift_matrix.y.size):
+        xx = x - sl.circ_cntr_y
+        theta = math.asin(xx / sl.circ_r)
+        py = (1 - math.cos(theta)) * math.copysign(sl.circ_r, sl.circ_cntr_x)
+        for l in range(w):
+            shift_matrix.values[x, l] = py
+
+    return shift_matrix
+
+def _multi_circle_shift(shift_matrix, spectral_lines, w):
+        
+    # x coordinates of spectral lines. First element set to 0, last to the width of the frame.
+    x_coords = []
+
+    for i,sl in enumerate(spectral_lines):
+        pl = sl.location
+        x_coords.append(pl)
+
+        if i == 0 or i == (len(spectral_lines)-1):
+        # Add an element to beginning and end of list        
+            x_coords.append(pl)
+
+    # Overwrite the extra elements
+    x_coords[0] = 0
+    x_coords[len(x_coords)-1] = w
+
+    for row_idx in range(shift_matrix.y.size):
+        shifts = []
+        for i,sl in enumerate(spectral_lines):
+            h = row_idx - sl.circ_cntr_y
+            theta = math.asin(h / sl.circ_r)
+            d = (1 - math.cos(theta)) * math.copysign(sl.circ_r, sl.circ_cntr_x)
+            shifts.append(d)
+            if i == 0 or i == (len(spectral_lines)-1):
+            # Set first element same as the second, and last same as second to last.
+                shifts.append(d)
+
+        f = interp1d(x_coords, shifts)
+
+        row = np.arange(w)
+        shift_linear_fit = f(row)
+
+        for l,d in enumerate(shift_linear_fit):
+            shift_matrix.values[x,l] = d
+
+    return shift_matrix
