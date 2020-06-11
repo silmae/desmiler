@@ -1,23 +1,83 @@
+"""
+All tools needed to make raw cube into desmiled reflectance cube. 
+
+Assumes the existance of a raw cube, a dark frame, and a frame of reference 
+light with sharp spectral lines. 
+
+Usage:
+
+Assuming existance of files test_scan_1_cube.nc, test_scan_1_dark.nc, and test_scan_1_ref.nc. 
+Place them in following folder sructure into the same folder where you run the code:
+
+./
+    scans/
+        test_scan_1/
+            test_scan_1_cube.nc
+            test_scan_1_dark.nc
+            test_scan_1_ref.nc
+
+Then run makeShiftArr(fileName='test_scan_1_ref'), which will create file 
+test_scan_1_shift.nc in test_scan_1/ folder.
+
+Run makeAllCubes(test_scan_1_cube), which will create test_scan_1_cube_rfl.nc (reflectance), 
+test_scan_1_cube_rfl_intr.nc (desmiled reflectance with interpolative shifts), and test_scan_1_cube_rfl_lut.nc 
+(desmiled reflectance with lookup table shifts) in test_scan_1/ folder.
+
+After everything has been run the folder should look like this:
+
+./
+    scans/
+        test_scan_1/
+            test_scan_1_cube.nc
+            test_scan_1_cube_rfl.nc
+            test_scan_1_cube_rfl_lut.nc
+            test_scan_1_cube_rfl_intr.nc
+            test_scan_1_dark.nc
+            test_scan_1_ref.nc
+            test_scan_1_shift.nc
+
+Now you can use CubeShow to inspect the cubes by running:
+
+cs = CubeShow('test_scan_1')
+cs.show()
+
+Class 'CubeShow' is an interactive matplotlib-based inspector program 
+with simple key and mouse commands.
+
+"""
+
 import xarray as xr
 import os
 
 import smile_correction as smile
 import inspector as insp
 
+
+# ------------------------
+# Loading stuff from disk.
+# ------------------------
+
+def load_cube(scan_name='test_scan_1', cube_type=''):
+    """ Loads and returns a cube (xarray Dataset) with given name from ./scans/scan_name/. """
+
+    path = f'scans/{scan_name}/{scan_name}_cube{cube_type}.nc'
+    ds = xr.open_dataset(os.path.normpath(path))
+    return ds
+
+def load_shift_matrix(scan_name='test_scan_1'):
+    """ Loads and returns a shift matrix (xarray DataArray) with given name from ./data. """
+
+    path = f'scans/{scan_name}/{scan_name}_shift.nc'
+    da = xr.open_dataarray(os.path.normpath(path))
+    return da
+
+def loadDarkFrame(scan_name='test_scan_1'):
+    """ Loads and returns a dark frame (xarray Dataset) with given name from ./frames. """
+
+    path = f'scans/{scan_name}/{scan_name}_dark.nc'
+    ds = xr.open_dataset(os.path.normpath(path))
+    return ds.frame
+
+
+
 if __name__ == '__main__':
-
-    test_frame_name = 'test_frame'
-    test_frame_sl_locations = [230,267,319,369,439,525,635,681,733,793,840,978,1030,1212,1400]
-    original_frame = xr.open_dataset(os.path.normpath('frames/' + test_frame_name + '.nc')).frame
-    # insp.plot_frame(original_frame, None, True, True, True)
-    bp = smile.construct_bandpass_filter(original_frame, test_frame_sl_locations, 30)
-    sl_list = smile.construct_spectral_lines(original_frame, test_frame_sl_locations, bp)
-    shift_matrix = smile.construct_shift_matrix(sl_list, original_frame.x.size,  original_frame.y.size)
-
-    # desmiled_frame = smile.apply_shift_matrix(original_frame, shift_matrix, target_is_cube=False, method=0)
-    # insp.plot_frame(original_frame, sl_list, True, True, True)
-    # insp.plot_frame_spectra(original_frame, bp)
-
-    desmiled_frame = smile.apply_shift_matrix(original_frame, shift_matrix, target_is_cube=False, method=1)
-    insp.plot_frame(original_frame, sl_list, True, True, True)
-    insp.plot_frame_spectra(original_frame, bp)
