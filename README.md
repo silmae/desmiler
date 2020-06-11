@@ -1,10 +1,36 @@
 # desmiler
 
-Detecting and correcting smile aberration of a push-broom hyperspectral imager. 
+Fot detecting and correcting smile aberration of a push-broom hyperspectral imager. 
+Contains various inspection tools to visualize the result of desmiling. 
 
-## Usage
+## Notation and data format
 
-See test_main.py for usage examples.
+A frame is output of one exposure of the imager. 
+A cube is hyperspectral data cube consisting of consecutive frames along a scan.
+
+Frames and cubes are expected to be in netcdf format for saving and loading. 
+We use xarray Dataset and DataArray to store and manipulate the data.
+
+Be prepared to fix bugs if your data is in different form than ours. 
+Especially the dimension names of the xarray Datasets are mostly hard-coded. 
+We use ('index', 'y', 'x') order where 'index' is the direction of the scan, 
+'y' is dimension perpendicular to scan direction,  and 'x' is the spectral dimension. 
+Many operations use underlaying numpy arrays, so different order will most probably 
+break things.
+
+## Outline
+
+* smile_cerrection.py: Does all heavy lifting for desmiling.
+* scan.py: For desmiling the result of a single scanning session. 
+	See the file documentation for details.
+* frame_inspector.py: Inspect frames visually with matplotlib plots. 
+	Inspected frame can be overlayed with circle fit and line fit data. 
+	Band pass can also be plotted.
+* cube_inspector.py: Interactive cube inspection tool. See more below.
+* test_main.py: Usage exampels.
+* spectral_line.py: SpectralLine objects represent a single spectral line 
+	of a frame.
+* curve_fit.py: Optimization for circle and line fits used by SpectralLine.
 
 ## CubeInspector class
 
