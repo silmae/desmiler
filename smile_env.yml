@@ -1,0 +1,22 @@
+# Create environment with conda running:
+# conda env create -n smile --file smile_env.yml.
+# Change "create" to "update" when updating.
+name: smile
+channels:
+  - defaults
+dependencies:
+  - python==3.7
+  - numpy
+  - pandas
+  - xarray
+  - scipy
+  - netcdf4
+  - matplotlib
+  - appdirs
+  - tqdm
+  - toml
+  - tabulate
+  - ipython
+  - pip
+  - pip:
+      - netcdf4
