@@ -195,6 +195,29 @@ def make_shift_matrix(locations, bandpass_width=30, scan_name='test_scan_1'):
     # shift_matrix.plot.imshow()
     return shift_matrix
 
+# General calculations to form false color images, spectral angle maps, etc.
+# --------------------------
+
+def calculate_false_color_images(org, lut, intr):
+    """ Calculate spectral angle map.
+
+    Expects to find color checker blue, green, and red tile from 
+    hard coded areas.
+    """
+
+    rBand = np.arange(1300,1500)
+    gBand = np.arange(660,860)
+    bBand = np.arange(300, 500)
+    rgb = np.array([rBand, gBand, bBand])
+    # Assumes that dimensions are ordered (d_along_scan, d_across_scan, d_spectral)
+    orgM = np.mean(org.reflectance.values[:,:,rgb], axis=3).astype(np.float32)
+    lutM = np.mean(lut.reflectance.values[:,:,rgb], axis=3).astype(np.float32)
+    intrM = np.mean(intr.reflectance.values[:,:,rgb], axis=3).astype(np.float32)
+    orgNorm = (orgM / np.max(orgM, axis=(0,1))).clip(min=0.0)
+    lutNorm = (lutM / np.max(lutM, axis=(0,1))).clip(min=0.0)
+    intrNorm = (intrM / np.max(intrM, axis=(0,1))).clip(min=0.0)
+    return orgNorm, lutNorm, intrNorm
+
 
 if __name__ == '__main__':
     # Hard coded locations of some spectral lines. 
