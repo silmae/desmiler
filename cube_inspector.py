@@ -59,6 +59,7 @@ d_along_scan   = 'index'
 d_across_scan  = 'y'
 d_spectral     = 'x'
 
+# Under what name the data is in the cube. 
 cube_data_name = 'dn'
 
 # Along scan white reference area.
@@ -103,24 +104,22 @@ def make_all_cubes(scan_name='test_scan_1'):
     """
 
     rfl = make_reflectance_cube(scan_name=scan_name)
-    makeDesmiledCube(scan_name=scan_name, sourceCube=rfl)
-    makeDesmiledCubeReIdx(scan_name=scan_name, sourceCube=rfl)
+    desmile_cube_intr(scan_name=scan_name, source_cube=rfl)
+    makeDesmiledCubeReIdx(scan_name=scan_name, source_cube=rfl)
 
-def make_reflectance_cube(scan_name='test_scan_1', sourceCube=None):
-    """ Makes a reflectance cube out of given raw cube.
+def make_reflectance_cube(scan_name='test_scan_1', source_cube=None):
+    """ Makes a reflectance cube out of a raw cube.
     
-    NaNs and Infs that may exist in interpolated desmile cubes are changed 
-    into numerical values. Loads the cube if not given. fileName is used 
-    for saving the resulting cube, so it must be given even if sourceCube is 
-    given.
+    Loads the cube if not given. 
     
-    Resulting cube is saved to disk and returned as xarray Dataset.
+    Resulting cube is saved into scans/{scan_name}/{scan_name}_cube_rfl.nc and 
+    returned as xarray Dataset.    
     """
 
-    if sourceCube is None:
+    if source_cube is None:
         org = load_cube(scan_name)
     else:
-        org = sourceCube
+        org = source_cube
 
     print(f"Substracting dark frame...", end=' ')
     d = load_dark_frame(scan_name)
@@ -147,6 +146,26 @@ def make_reflectance_cube(scan_name='test_scan_1', sourceCube=None):
     print(f"Saving reflectance cube to {path}...", end=' ')
     rfl.to_netcdf(os.path.normpath(path), format='NETCDF4', engine='netcdf4')
     print(f"done")
+
+def desmile_cube_intr(scan_name='test_scan_1', source_cube=None):
+    """ Desmile a reflectance cube with interpolative shifts and save and return the result."""
+
+    if source_cube is None:
+        path = f'scans/{scan_name}/{scan_name}_cube_rfl.nc'
+        rfl = load_cube(scan_name, 'rfl')
+    else:
+        rfl = source_cube
+
+    s = load_shift_matrix(scan_name)
+
+    print(f"Desmiling interpolated...", end=' ')
+    desmiled = smile.apply_shift_matrix(rfl, s, 1, target_is_cube=True)
+    print(f"done")
+    path = f'scans/{scan_name}/{scan_name}_cube_rfl_intr.nc'
+    print(f"Saving interpolated cube to {path}...", end=' ')
+    desmiled.to_netcdf(os.path.normpath(path))
+    print(f"done")
+    return desmiled
 
 
 if __name__ == '__main__':
