@@ -182,7 +182,7 @@ class CubeInspector:
         self.spectral_filter_max = self.org.reflectance[d_spectral].size
         # How much the spectral filter is moved to left or right.        
         self.spectral_filter_step = 100
-        
+
         # Cosine boxes
         self.sam_window_start = [490,258]
         self.sam_window_end = [490+460,310]
@@ -306,15 +306,17 @@ class CubeInspector:
         if key == 'r':
             self.toggle_radians = not self.toggle_radians
             self.show(force_update=True)
-        if self.mode == 3:      # How much the spectral filter is moved to left or right.            if key == 'a':      # How much the spectral filter is moved to left or right.                low = self.spectral_filter.start - self.spectral_filter_step
+        if self.mode == 3:      # How much the spectral filter is moved to left or right.            
+            if key == 'a':      
+                low = self.spectral_filter.start - self.spectral_filter_step
                 high = self.spectral_filter.stop - self.spectral_filter_step
-                
                 low = np.clip(low, a_min=0, a_max=self.spectral_filter_max)
                 high = np.clip(high, a_min=0, a_max=self.spectral_filter_max)
                 self.spectral_filter = slice(low, high)
-                self.show(force_update=True)        # How much the spectral filter is moved to left or right.            if key == 'd':      # How much the spectral filter is moved to left or right.                low = self.spectral_filter.start + self.spectral_filter_step
+                self.show(force_update=True)        
+            if key == 'd':      
+                low = self.spectral_filter.start + self.spectral_filter_step
                 high = self.spectral_filter.stop + self.spectral_filter_step
-                
                 low = np.clip(low, a_min=0, a_max=self.spectral_filter_max)
                 high = np.clip(high, a_min=0, a_max=self.spectral_filter_max)
                 self.spectral_filter = slice(low, high)
