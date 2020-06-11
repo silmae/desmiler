@@ -17,7 +17,7 @@ Place them in following folder sructure into the same folder where you run the c
             test_scan_1_dark.nc
             test_scan_1_ref.nc
 
-Then run makeShiftArr(fileName='test_scan_1_ref'), which will create file 
+Then run make_shift_matrix(fileName='test_scan_1_ref'), which will create file 
 test_scan_1_shift.nc in test_scan_1/ folder.
 
 Run make_all_cubes(test_scan_1_cube), which will create test_scan_1_cube_rfl.nc (reflectance), 
@@ -172,6 +172,31 @@ def desmile_cube(scan_name='test_scan_1', source_cube=None, shift_method=0):
     print(f"done")
     return desmiled
 
+def make_shift_matrix(locations, bandpass_width=30, scan_name='test_scan_1'):
+    """Make shift matrix and save it to disk.
+    
+    If there does not exist a file './scan_name/scan_name_shift.nc', this method 
+    has to be called to create one. The shift matrix is valid for all cubes 
+    imaged with same settings (hardware and software).
+    """
+
+    load_path = f'scans/{scan_name}/{scan_name}_ref.nc'
+    ds = xr.load_dataset(os.path.normpath(load_path))
+    frame = ds.frame
+    bp = smile.construct_bandpass_filter(frame, locations, bandpass_width)
+    sl_list = smile.construct_spectral_lines(frame, locations, bp)
+    shift_matrix = smile.construct_shift_matrix(sl_list, frame[d_spectral].size,  frame[d_across_scan].size)
+
+    save_path = f'scans/{scan_name}/{scan_name}_shift.nc'
+    print(f"Saving shift matrix to {save_path}...", end=' ')
+    shift_matrix.to_netcdf(os.path.normpath(save_path))
+    print("done")
+    # Uncomment for debugging
+    # shift_matrix.plot.imshow()
+    return shift_matrix
+
 
 if __name__ == '__main__':
-    pass
+    # Hard coded locations of some spectral lines. 
+    locations = [360,430,515,665,780,827,930,970,1025,1382,2060]
+    make_shift_matrix(locations, bandpass_width=30, scan_name='test_scan_1')
