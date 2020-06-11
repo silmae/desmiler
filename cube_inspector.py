@@ -104,8 +104,8 @@ def make_all_cubes(scan_name='test_scan_1'):
     """
 
     rfl = make_reflectance_cube(scan_name=scan_name)
-    desmile_cube_intr(scan_name=scan_name, source_cube=rfl)
-    makeDesmiledCubeReIdx(scan_name=scan_name, source_cube=rfl)
+    desmile_cube(scan_name=scan_name, source_cube=rfl, shift_method=0)
+    desmile_cube(scan_name=scan_name, source_cube=rfl, shift_method=1)
 
 def make_reflectance_cube(scan_name='test_scan_1', source_cube=None):
     """ Makes a reflectance cube out of a raw cube.
@@ -147,8 +147,13 @@ def make_reflectance_cube(scan_name='test_scan_1', source_cube=None):
     rfl.to_netcdf(os.path.normpath(path), format='NETCDF4', engine='netcdf4')
     print(f"done")
 
-def desmile_cube_intr(scan_name='test_scan_1', source_cube=None):
-    """ Desmile a reflectance cube with interpolative shifts and save and return the result."""
+def desmile_cube(scan_name='test_scan_1', source_cube=None, shift_method=0):
+    """ Desmile a reflectance cube with lut of intr shifts and save and return the result."""
+
+    if shift_method == 0:
+        cube_type = 'lut'
+    elif shift_method == 1:
+        cube_type = 'intr'
 
     if source_cube is None:
         path = f'scans/{scan_name}/{scan_name}_cube_rfl.nc'
@@ -158,10 +163,10 @@ def desmile_cube_intr(scan_name='test_scan_1', source_cube=None):
 
     s = load_shift_matrix(scan_name)
 
-    print(f"Desmiling interpolated...", end=' ')
-    desmiled = smile.apply_shift_matrix(rfl, s, 1, target_is_cube=True)
+    print(f"Desmiling {cube_type} shifts...", end=' ')
+    desmiled = smile.apply_shift_matrix(rfl, s, method=shift_method, target_is_cube=True)
     print(f"done")
-    path = f'scans/{scan_name}/{scan_name}_cube_rfl_intr.nc'
+    path = f'scans/{scan_name}/{scan_name}_cube_rfl_{cube_type}.nc'
     print(f"Saving interpolated cube to {path}...", end=' ')
     desmiled.to_netcdf(os.path.normpath(path))
     print(f"done")
