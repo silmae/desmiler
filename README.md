@@ -66,9 +66,9 @@ Mode specific bindings
 
 Create environment with conda running
 
-'''conda env create -n smile --file smile_env.yml'''
+```conda env create -n smile --file smile_env.yml```
 
 in conda prompt.
 
-Change '''create''' to '''update''' when updating.
+Change ```create``` to ```update``` when updating.
 
