@@ -62,5 +62,13 @@ Mode specific bindings
 	while pressed, all actions are ignored, so that matplolib's 
 	own commands (such as zooming) can be used.
 
+## Create conda environment
 
+Create environment with conda running
+
+'''conda env create -n smile --file smile_env.yml'''
+
+in conda prompt.
+
+Change '''create''' to '''update''' when updating.
 
