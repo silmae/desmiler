@@ -4,6 +4,6 @@ __pycache__/
 
 # Exclude all saved frames, cubes, and analysis
 frames/*
-cubes/*
+scans/*
 data/*
 img/*
