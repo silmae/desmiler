@@ -1,3 +1,10 @@
+"""
+This file contains the core functionality of the desmiling process, i.e., 
+bandpass filter construction, SL construction, shift matrix construction and 
+application.
+
+"""
+
 import numpy as np
 from scipy.interpolate import interp1d
 import scipy.signal as signal
@@ -7,15 +14,15 @@ import math
 from spectral_line import SpectralLine
 
 def construct_bandpass_filter(peak_light_frame, location_estimates, filter_window_width):
-    """ Constructs a bandpass filter.
+    """ Constructs a bandpass filter for given frame.
 
-    Generated filters may be narrower than given filter_window_width if locations 
+    Generated filter windows may be narrower than given filter_window_width if locations 
     are packed too densly together.
 
     Parameters
     ----------
-        peak_light_frame : xarray DataArray
-            Frame with spectral lines as DataArray. Expected dimension names 
+        peak_light_frame : xarray Dataset
+            Frame with spectral lines as Dataset. Expected dimension names 
             of the array are x and y. Spectral lines are expected to lie 
             along y-dimension.
         location_estimates : list
@@ -28,9 +35,9 @@ def construct_bandpass_filter(peak_light_frame, location_estimates, filter_windo
     Returns
     -------
         low : numpy array
-            One-dimensional lower limit column-wise filter (same size as x). Filled with zeros.
+            One-dimensional lower limit column-wise filter (same size as peak_light_frame.x). Filled with zeros.
         high : numpy array
-            One-dimensional higher limit column-wise filter (same size as x). Filled with zeros.
+            One-dimensional higher limit column-wise filter (same size as peak_light_frame.x).
     """
 
     # Initialize return values.
@@ -67,18 +74,18 @@ def construct_bandpass_filter(peak_light_frame, location_estimates, filter_windo
     return low,high
 
 def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
-    """ Constructs a spectral lines found from given frame. 
+    """ Constructs spectral lines found from given frame. 
 
     Spectral lines are expected to be found from location_estimates, which should be 
     the same that is provided for construct_bandpass_filter() method.
 
     Parameters
     ----------
-        peak_light_frame
-            Frame with spectral lines as DataArray. Expected dimension names 
+        peak_light_frame : xarray Dataset
+            Frame with spectral lines as Dataset. Expected dimension names 
             of the array are x and y. Spectral lines are expected to lie 
             along y-dimension.
-        location_estimates
+        location_estimates : list int
             User defined estimates of x-location where to find a spectral line. 
             The filter is constructed around these locations. Locations should 
             be further that filter_window_width away from each other.
@@ -87,7 +94,7 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
     
     Returns
     -------
-        spectral_line_list
+        spectral_line_list : list SpectralLine
             A list of SpectralLine objects.
 
     """
@@ -133,9 +140,9 @@ def construct_shift_matrix(spectral_lines, w, h):
     Parameters
     ----------
 
-    spectralLines : List<SpectralLine>
-        A list of spectral lines to base the desmiling on as returned by 
-        FrameTools.getSpectralLines().
+    spectralLines : list SpectralLine
+        A list of spectral lines to base the desmiling on.
+        Use construct_spectral_lines() to acquire them.
     w: int
         Width of the frame to be desmiled.
     h: int
@@ -143,16 +150,9 @@ def construct_shift_matrix(spectral_lines, w, h):
     
     Returns
     -------
-    shift_matrix : Xarray DataArray
-        Desmile distance matrix. Use FrameTools._shift_matrix_to_index_matrix() to 
+    shift_matrix : xarray DataArray
+        Shift distance matrix. Use _shift_matrix_to_index_matrix() to 
         get new indices.
-
-    Raises
-    ------
-    TypeError 
-        If given frame or spectralLines was None.
-    RuntimeError
-        If given spectralLines was empty.
     """
 
     shift_matrix = xr.DataArray(np.zeros((h,w)), dims=('y','x'))
@@ -161,12 +161,12 @@ def construct_shift_matrix(spectral_lines, w, h):
     if len(spectral_lines) == 1:
         shift_matrix = _single_circle_shift(shift_matrix, spectral_lines, w)
     else:
-        print("Desmiling with Interpolated Circles method.")
         shift_matrix = _multi_circle_shift(shift_matrix, spectral_lines, w)
 
     return shift_matrix
 
 def _single_circle_shift(shift_matrix, spectral_lines, w):
+    """ Create shifts using a single spectral line. """
 
     sl = spectral_lines[0]
     for x in range(shift_matrix.y.size):
@@ -179,6 +179,7 @@ def _single_circle_shift(shift_matrix, spectral_lines, w):
     return shift_matrix
 
 def _multi_circle_shift(shift_matrix, spectral_lines, w):
+    """ Create shift matrix by interpolating several spectral lines. """
         
     # x coordinates of spectral lines. First element set to 0, last to the width of the frame.
     x_coords = []
@@ -222,7 +223,7 @@ def apply_shift_matrix(target, shift_matrix, method=0, target_is_cube=True):
     Parameters
     ----------
         target : xarray Dataset
-            Cube or frame....
+            Target cube or frame, specify with target_is_cube parameter.
         shift_matrix
             The shift matrix to apply as given by construct_shift_matrix().
         method
@@ -300,9 +301,7 @@ def _shift_matrix_to_index_matrix(shift_matrix):
     return index_x,index_y
 
 def _intr_shift_frame(frame, shift_matrix):
-    """ Desmile frame using row-wise interpolation of 
-        pixel intensities. 
-    """
+    """ Desmile frame using row-wise interpolation of pixel intensities. """
 
     ds = xr.Dataset(
         data_vars={
@@ -322,9 +321,7 @@ def _intr_shift_frame(frame, shift_matrix):
     return ds.frame
 
 def _intr_shift_cube(cube, shift_matrix):
-    """ Desmile cube using row-wise interpolation of 
-        pixel intensities. 
-    """
+    """ Desmile cube using row-wise interpolation of pixel intensities.  """
 
     ds = xr.Dataset(
         data_vars={
@@ -367,7 +364,7 @@ def _intr_shift_cube(cube, shift_matrix):
     return ds
 
 def _desmile_row(row):
-    """ Used by interpolative shift only. """
+    """ Interpolate a single row. """
 
     row['x'] = row.desmiled_x
     new_x = row.new_x
