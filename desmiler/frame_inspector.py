@@ -8,9 +8,21 @@ def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=No
     If desmiled frame is given, its spectrum will be plotted to the same 
     figure. If bandpass filter is given, it will be plotted too.
 
+    This method can be used to visualize generated bandpass filter or just to 
+    inspect the spectra of given frame.
+
     Parameters
     ----------
-
+        original_frame : xarray Dataset
+            Frame whose spectra will be plotted.
+        original_bandpass : numpy array
+            Bandpass filter of given frame. Optional. 
+        desmiled_frame : xarray Dataset
+            Desmiled frame if one wants to compare it with the original frame. Optional.
+        desmiled_bandpass : numpy array
+            Bandpass filter of the desmiled frame. Optional.         
+        window_name
+            Matplotlib window name. Can be used to close the window.
     """
 
     if desmiled_frame is not None:
@@ -20,10 +32,10 @@ def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=No
             raise ValueError("Original frame and desmiled frame height is not the same.")
     if original_bandpass is not None:
         if original_frame.x.size != len(original_bandpass[0]):
-            raise ValueError("Original frame's width and peak heights list's length is not the same.")
+            raise ValueError("Original frame's width and bandpass list's length is not the same.")
     if desmiled_bandpass is not None:
         if original_frame.x.size != len(desmiled_bandpass[0]):
-            raise ValueError("Original frame's width and peak heights list's length is not the same.")
+            raise ValueError("Original frame's width and bandpass list's length is not the same.")
 
     w = original_frame.x.size
     h = original_frame.y.size
