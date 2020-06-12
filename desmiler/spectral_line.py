@@ -4,7 +4,7 @@ import numpy as np
 import curve_fit as cf
 
 class SpectralLine:
-    """ SpectralLine represents a spectral emission line on camera sensor. 
+    """ SpectralLine object represents a spectral emission line on camera sensor. 
 
     The lines are expected to lie along y-axis in input data.
 
@@ -15,7 +15,7 @@ class SpectralLine:
         y : list
             List of y coordinates of data points forming the spectral line in xy-coordinates.
         location : float
-            Mean of x coordinates.
+            Location of the SL on x-axis. 
         circ_cntr_x : float
             Fitted circle center x-coordinate.
         circ_cntr_y : float
@@ -43,7 +43,12 @@ class SpectralLine:
 
         self.x = x
         self.y = y
+        # Correct location of the SL assumed mean of points. Can also use 
+        # circ_cntr_x - circ_r. Using mean prevents the lines moving too far from 
+        # their original positions.
         self.location = np.mean(x)
+        # LSF can be changed to LMA if desired. 
+        # But not for parabolic as they have different return values!
         self.circ_cntr_x, self.circ_cntr_y, self.circ_r,_ = cf.LSF(x,y)
         self.line_a, self.line_b = cf.line_fit(x,y)
         self.tilt_angle_degree_abs = 90 - abs(math.atan(self.line_a) * 57.2957795)
