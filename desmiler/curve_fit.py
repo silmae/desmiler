@@ -166,6 +166,35 @@ def LMA(x,y):
     res = optimize.least_squares(f, (a,b,r), jac=jac, method='lm')
     return res.x[0], res.x[1], res.x[2], float('Nan')
 
+def parabolicFit(x,y, p0=None):
+    """ Fit a parabola to set of x,y points.
+
+    Cannot be used replacing LSF and LMA as it does not produce 
+    the same (a,b,r) parameter set as a result. Can be used to 
+    compare original and desmiled spectral lines. Return parameters 
+    a,b,c are as in sideways opening parabola equation x = ay^2 + by + c.
+    """
+
+    def parabola(x,a,b,c):
+        return a*x**2 + b*x + c
+    
+    def jac(x,a,b,c):
+        da = x**2
+        db = x
+        dc = np.ones_like(x)
+        return np.array(list(zip(da,db,dc)))
+
+    # Give coordinates in inverted order to get sideways parabola x = ay^2 + by + c
+    p, pcov = sc.optimize.curve_fit(parabola, y, x, p0=p0, jac=jac)
+    a = p[0]
+    b = p[1]
+    c = p[2]
+    # The vertex
+    # V = ((4*a*c - b**2) / (4*a), -b / (2*a))
+    # Focus
+    # F = ((4*a*c - b**2 + 1) / (4*a), -b / (2*a))
+    return a,b,c
+
 def line_fit(x,y):
     """Fit a least squares line to data.
 
