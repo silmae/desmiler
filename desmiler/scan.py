@@ -17,10 +17,10 @@ Place them in following folder sructure into the same folder where you run the c
             test_scan_1_dark.nc
             test_scan_1_ref.nc
 
-Then run make_shift_matrix(fileName='test_scan_1_ref'), which will create file 
+Then run make_shift_matrix(fileName='test_scan_1'), which will create file 
 test_scan_1_shift.nc in test_scan_1/ folder.
 
-Run make_all_cubes(test_scan_1_cube), which will create test_scan_1_cube_rfl.nc (reflectance), 
+Run make_all_cubes(test_scan_1), which will create test_scan_1_cube_rfl.nc (reflectance), 
 test_scan_1_cube_rfl_intr.nc (desmiled reflectance with interpolative shifts), and test_scan_1_cube_rfl_lut.nc 
 (desmiled reflectance with lookup table shifts) in test_scan_1/ folder.
 
@@ -37,13 +37,13 @@ After everything has been run the folder should look like this:
             test_scan_1_ref.nc
             test_scan_1_shift.nc
 
-Now you can use CubeShow to inspect the cubes by running:
+Now you can use CubeInspector to inspect the cubes by running:
 
-cs = CubeShow('test_scan_1')
-cs.show()
+ci = CubeInspector('test_scan_1')
+ci.show()
 
 Class 'CubeShow' is an interactive matplotlib-based inspector program 
-with simple key and mouse commands.
+with simple key and mouse commands. Can be run from iPython as well.
 
 """
 
