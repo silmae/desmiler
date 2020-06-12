@@ -8,6 +8,9 @@ class SpectralLine:
 
     The lines are expected to lie along y-axis in input data.
 
+    Fits a circle and a line to data points. Circle is defined by (x-a)^2 + (y-b)^2 = r^2,
+    where (a,b) is its center point and r its radius. 
+
     Attributes
     ----------
         x : list
