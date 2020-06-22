@@ -1,10 +1,10 @@
 import xarray as xr
 import os
 
-import desmiler.smile_correction as smile
-import desmiler.frame_inspector as insp
-from desmiler.cube_inspector import CubeInspector
-import desmiler.scan as scan
+import smile_correction as smile
+import frame_inspector as insp
+from cube_inspector import CubeInspector
+import scan as scan
 
 if __name__ == '__main__':
 
@@ -13,7 +13,7 @@ if __name__ == '__main__':
     
     test_frame_name = 'test_frame'
     test_frame_sl_locations = [230,267,319,369,439,525,635,681,733,793,840,978,1030,1212,1400]
-    original_frame = xr.open_dataset(os.path.normpath('frames/' + test_frame_name + '.nc')).frame
+    original_frame = xr.open_dataset(os.path.normpath('./frames/' + test_frame_name + '.nc')).frame
     bp = smile.construct_bandpass_filter(original_frame, test_frame_sl_locations, 30)
     sl_list = smile.construct_spectral_lines(original_frame, test_frame_sl_locations, bp)
     shift_matrix = smile.construct_shift_matrix(sl_list, original_frame.x.size,  original_frame.y.size)
