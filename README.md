@@ -74,5 +74,5 @@ Change ```create``` to ```update``` when updating.
 
 ## DOI
 
-10.5281/zenodo.3903218
+https://doi.org/10.5281/zenodo.3903218
 
