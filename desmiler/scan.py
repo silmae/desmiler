@@ -42,9 +42,6 @@ Now you can use CubeInspector to inspect the cubes by running:
 ci = CubeInspector('test_scan_1')
 ci.show()
 
-Class 'CubeShow' is an interactive matplotlib-based inspector program 
-with simple key and mouse commands. Can be run from iPython as well.
-
 """
 
 import numpy as np
@@ -52,7 +49,6 @@ import xarray as xr
 import os
 
 import smile_correction as smile
-import inspector as insp
 
 # Expected dimension names of the spectral cube.
 d_along_scan   = 'index'
