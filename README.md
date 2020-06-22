@@ -1,6 +1,6 @@
 # desmiler
 
-Fot detecting and correcting smile aberration of a push-broom hyperspectral imager. 
+For detecting and correcting smile aberration of a push-broom hyperspectral imager. 
 Contains various inspection tools to visualize the result of desmiling. 
 
 ## Notation and data format
@@ -24,10 +24,10 @@ break things.
 * scan.py: For desmiling the result of a single scanning session. 
 	See the file documentation for details.
 * frame_inspector.py: Inspect frames visually with matplotlib plots. 
-	Inspected frame can be overlayed with circle fit and line fit data. 
+	Inspected frame can be overlaid with circle fit and line fit data. 
 	Band pass can also be plotted.
 * cube_inspector.py: Interactive cube inspection tool. See more below.
-* test_main.py: Usage exampels.
+* test_main.py: Usage examples.
 * spectral_line.py: SpectralLine objects represent a single spectral line 
 	of a frame.
 * curve_fit.py: Optimization for circle and line fits used by SpectralLine.
@@ -52,14 +52,14 @@ Mode specific bindings
 ### Mouse bindings
 
 * left click (modes 1 and 2): 
-	select from wchich pixel the spectra is shown or 
+	select from which pixel the spectra are shown or 
 	select band if clicked over the spectra plot
 * shit + left click (any mode): 
 	set first corner of SAM window, second time sets the other 
 	corner and SAM is shown when mode 3 is selected. Other actions 
 	after giving the first corner will unset it.
 * alt: 
-	while pressed, all actions are ignored, so that matplolib's 
+	while pressed, all actions are ignored, so that matplotlib's 
 	own commands (such as zooming) can be used.
 
 ## Create conda environment
