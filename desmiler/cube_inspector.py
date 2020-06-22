@@ -295,7 +295,7 @@ class CubeInspector:
                 Toggle between dot product and cosine angle in mode 3.
             a
                 If in mode 3, move spectral filter to the left
-            b
+            d
                 If in mode 3, move spectral filter to the right
         """
 
