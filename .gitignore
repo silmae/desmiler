@@ -1,6 +1,7 @@
 __pycache__/
 
 .vscode/
+.idea/
 
 # Exclude all saved frames, cubes, and analysis
 desmiler/frames/*
