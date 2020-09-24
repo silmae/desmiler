@@ -48,7 +48,7 @@ import numpy as np
 import xarray as xr
 import os
 
-import smile_correction as smile
+from core import smile_correction as smile
 
 # Expected dimension names of the spectral cube.
 d_along_scan   = 'index'

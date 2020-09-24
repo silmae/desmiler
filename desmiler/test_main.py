@@ -1,10 +1,9 @@
 import xarray as xr
 import os
 
-import smile_correction as smile
-import frame_inspector as insp
-from cube_inspector import CubeInspector
-import scan as scan
+from analysis import frame_inspector as insp
+from analysis.cube_inspector import CubeInspector
+from core import scan as scan, smile_correction as smile
 
 if __name__ == '__main__':
 

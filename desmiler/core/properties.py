@@ -2,8 +2,8 @@
 
 """
 
-scan_folder_name = 'scans'
-frame_folder_name = 'frames'
+scan_folder_name = '../scans'
+frame_folder_name = '../frames'
 
 extension_dark = 'dark'
 extension_white = 'white'

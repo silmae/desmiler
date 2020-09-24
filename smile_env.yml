@@ -20,3 +20,5 @@ dependencies:
   - pip
   - pip:
       - netcdf4
+      # Expect camazing to be one level higher
+      - -e ../camazing

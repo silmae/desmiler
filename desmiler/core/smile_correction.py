@@ -11,7 +11,7 @@ import scipy.signal as signal
 import xarray as xr
 import math
 
-from spectral_line import SpectralLine
+from core.spectral_line import SpectralLine
 
 def construct_bandpass_filter(peak_light_frame, location_estimates, filter_window_width):
     """ Constructs a bandpass filter for given frame.

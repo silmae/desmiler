@@ -5,9 +5,10 @@ Console UI for controlling various funktionalities.
 """
 
 
-from scanning_session import ScanningSession
-from camera_interface import CameraInterface
-import properties as P
+from imaging.scanning_session import ScanningSession
+from core import properties as P
+from utilities import file_handling as F
+
 
 class UI:
 
@@ -16,6 +17,7 @@ class UI:
 
     def __init__(self):
         print("Initializing the UI.")
+        F.create_default_directories()
         print("I cannot yet do anything but next, you might like to start "
               "a named scanning session 'start_session()' for later analysis, "
               "a freeform session to make quick experiments 'start_freeform_session()' or "

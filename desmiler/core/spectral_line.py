@@ -1,7 +1,8 @@
 import math
 import numpy as np
 
-import curve_fit as cf
+from core import curve_fit as cf
+
 
 class SpectralLine:
     """ SpectralLine object represents a spectral emission line on camera sensor. 

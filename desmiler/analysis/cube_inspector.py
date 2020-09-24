@@ -1,12 +1,9 @@
 import numpy as np
-import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.cm as cm
-import os
 
-import scan as scan
-
+from core import scan as scan
 
 # Expected dimension names of the spectral cube.
 d_along_scan   = 'index'

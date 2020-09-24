@@ -7,8 +7,9 @@ correct folder structure.
 
 import os
 
-import properties as P
-import file_handling as F
+from core import properties as P
+from utilities import file_handling as F
+
 
 class ScanningSession:
 
@@ -23,7 +24,7 @@ class ScanningSession:
             print(f"Found existing session. Loading files..")
             print(f"And now I pretend to load those files into memory, but not really doing nothing.")
         else:
-            F.create_directory()
+            F.create_directory(self.session_root)
 
     def session_exists(self) -> bool:
         if os.path.exists(self.session_root):
