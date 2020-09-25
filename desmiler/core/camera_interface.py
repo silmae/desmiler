@@ -119,7 +119,6 @@ class CameraInterface:
 
         self._cam = cameras[0]
 
-        # FIXME What would be good way to handle these exceptions?
         try:
             print("Initializing camera...", end=' ')
             self._cam.initialize()
@@ -131,10 +130,10 @@ class CameraInterface:
         except Exception:
             raise RuntimeError("Could not initialize the camera. You may have another instance using the camera.")
 
-            # Read settings from a file.
-        # NOTE Binning cannot currently be set from settings file (some other setting may interfere?).
+        # Read camera settings from a file.
         _, errors = self._cam.load_config_from_file(P.camera_settings_path)
 
-        logging.warning(f"Errors provided by camazing when loading settings from path {P.camera_settings_path}:")
+        if len(errors) != 0:
+            logging.warning(f"Errors provided by camazing when loading settings from path {P.camera_settings_path}:")
         for e in enumerate(errors):
             logging.warning(e)
