@@ -9,4 +9,6 @@ extension_dark = 'dark'
 extension_white = 'white'
 extension_light = 'light'
 
+camera_settings_path = '../camera_settings.toml'
+
 freeform_session_name = 'freeform'

@@ -6,6 +6,7 @@ Console UI for controlling various funktionalities.
 
 
 from imaging.scanning_session import ScanningSession
+from core.camera_interface import CameraInterface
 from core import properties as P
 from utilities import file_handling as F
 
@@ -13,7 +14,7 @@ from utilities import file_handling as F
 class UI:
 
     sc = None
-    cam = None
+    cami = None
 
     def __init__(self):
         print("Initializing the UI.")
@@ -56,7 +57,9 @@ class UI:
             print(f"An existing session must be closed before starting the preview.")
             self.close_session()
 
-        print(f"Now I would start a preview if I knew how! Doing nothing.")
+        #print(f"Now I would start a preview if I knew how! Doing nothing.")
+        cami = CameraInterface()
+
 
     def shoot_dark(self):
         """Shoots and saves a dark frame.
