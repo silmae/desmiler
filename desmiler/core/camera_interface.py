@@ -52,6 +52,7 @@ class CameraInterface:
         if self._cam is not None:
             if self._cam.is_initialized():
                 self._cam.stop_acquisition()
+        del self._cam
 
     def turn_on(self):
         logging.debug("Turning camera on.")
