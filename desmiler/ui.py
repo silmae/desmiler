@@ -9,20 +9,27 @@ from imaging.scanning_session import ScanningSession
 from core.camera_interface import CameraInterface
 from core import properties as P
 from utilities import file_handling as F
+from imaging.preview import Preview
 
 
 class UI:
 
     sc = None
     cami = None
+    preview = None
 
     def __init__(self):
         print("Initializing the UI.")
         F.create_default_directories()
+        self.cami = CameraInterface()
         print("I cannot yet do anything but next, you might like to start "
               "a named scanning session 'start_session()' for later analysis, "
               "a freeform session to make quick experiments 'start_freeform_session()' or "
               "a preview to see camera feed 'start_preview()'.")
+
+    def __del__(self):
+        if self.cami is not None:
+            del self.cami
 
     def start_session(self, session_name:str) -> ScanningSession:
         """Start new named scanning session with its own folder."""
@@ -32,7 +39,7 @@ class UI:
             print(f"Found existing session '{self.sc.session_name}'. Cannot create a new one before closing.")
             self.close_session()
 
-        self.sc = ScanningSession(session_name)
+        self.sc = ScanningSession(session_name, self.cami)
         print(f"Created new scanning session '{self.sc.session_name}'.")
 
     def start_freeform_session(self):
@@ -43,7 +50,9 @@ class UI:
     def close_session(self):
         print(f"Closing session '{self.sc.session_name}'", end='... ')
         # TODO Check that everything is OK before closing
+        self.sc.close()
         self.sc = None
+
         print("done. Ready to open a new session.")
 
     def start_preview(self):
@@ -57,8 +66,8 @@ class UI:
             print(f"An existing session must be closed before starting the preview.")
             self.close_session()
 
-        #print(f"Now I would start a preview if I knew how! Doing nothing.")
-        cami = CameraInterface()
+        self.preview = Preview(self.cami)
+        self.preview.start()
 
 
     def shoot_dark(self):
