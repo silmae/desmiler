@@ -17,13 +17,16 @@ class ScanningSession:
 
     def __init__(self, session_name:str, cami:CameraInterface):
         print(f"Creating session '{session_name}'")
-        self.session_root = P.scan_folder_name + '/' + session_name
         self.session_name = session_name
+        self.session_root = P.path_rel_scan + '/' + session_name
+        self.camera_setting_path = self.session_root + '/' + P.settings_file_name
         self._cami = cami
 
         if self.session_exists():
             print(f"Found existing session. Loading files..")
-            print(f"And now I pretend to load those files into memory, but not really doing nothing.")
+            if os.path.exists(self.camera_setting_path):
+                print(f"Found existing camera settings")
+                self._cami.load_camera_settings(self.camera_setting_path)
         else:
             F.create_directory(self.session_root)
 
@@ -37,7 +40,7 @@ class ScanningSession:
         """Turn camera off and save all stuff."""
 
         self._cami.turn_off()
-        # TODO save stuff
+        self._cami.save_camera_settings(self.camera_setting_path)
 
 
 

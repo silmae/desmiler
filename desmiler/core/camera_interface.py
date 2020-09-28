@@ -28,6 +28,7 @@ cameras = CameraList('C:/Program Files/MATRIX VISION/mvIMPACT Acquire/bin/x64/mv
 import logging
 import xarray as xr
 from xarray import DataArray
+import os
 
 from camazing import CameraList
 from core import properties as P
@@ -136,10 +137,10 @@ class CameraInterface:
             raise RuntimeError("Could not initialize the camera. You may have another instance using the camera.")
 
         # Read camera settings from a file.
-        _, errors = self._cam.load_config_from_file(P.camera_settings_path)
+        _, errors = self._cam.load_config_from_file(P.path_rel_default_cam_settings)
 
         if len(errors) != 0:
-            logging.warning(f"Errors provided by camazing when loading settings from path {P.camera_settings_path}:")
+            logging.warning(f"Errors provided by camazing when loading settings from path {P.path_rel_default_cam_settings}:")
         for e in enumerate(errors):
             logging.warning(e)
 
@@ -201,3 +202,19 @@ class CameraInterface:
                     self._cam.start_acquisition()
         else:
             logging.warning(f"Feature '{name}' is not valid. Try again with valid name.")
+
+    def save_camera_settings(self, relative_path):
+        """Save camera settings into a file in given path."""
+
+        # Make into absolute path so that camazing gets it correctly.
+        save_path = os.path.abspath(relative_path)
+        print(f"Trying to save camera settings to '{save_path}'")
+        self._cam.save_config_to_file(str(save_path), overwrite=True)
+
+    def load_camera_settings(self, relative_path):
+        """Load camera settings from a file in given path."""
+
+        # Make into absolute path so that camazing gets it correctly.
+        load_path = os.path.abspath(relative_path)
+        print(f"Trying to load camera settings from '{load_path}'")
+        self._cam.load_config_from_file(str(load_path))

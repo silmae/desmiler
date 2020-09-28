@@ -99,5 +99,5 @@ if __name__ == '__main__':
     ui = UI()
     ui.start_session('my_new_session')
     ui.start_freeform_session()
-    ui.start_preview()
+    #ui.start_preview()
 
