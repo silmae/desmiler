@@ -12,11 +12,12 @@ If using camazing, you will need to install MatrixVision:
 
 Go to http://static.matrix-vision.com/mvIMPACT_Acquire/
 Choose latest version directory
-Download mvGenTL_Acquire-x86_64-2.39.0.exe for 64 bit OS
+Download mvGenTL_Acquire-x86_64-X.XX.X.exe for 64 bit OS
 Execute and follow installation wizard instructions
 Windows start menu should now have vxPropView(x64) - run it. You
-should be able to connect to the camera there and start frame acquisition.
-In your own code (essentially, this file) initalize camera list by providing
+should be able to connect to the camera there and start frame acquisition
+(press 'Use' and then 'Acquire').
+In your own code (essentially, this file) initialize camera list by providing
 path to the correct .cti file like so:
 cameras = CameraList('C:/Program Files/MATRIX VISION/mvIMPACT Acquire/bin/x64/mvGenTLProducer.cti')
 
