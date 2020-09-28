@@ -22,6 +22,10 @@ class ScanningSession:
         self.camera_setting_path = self.session_root + '/' + P.settings_file_name
         self._cami = cami
 
+        self.dark = None
+        self.white = None
+        self.light = None
+
         if self.session_exists():
             print(f"Found existing session.")
             if os.path.exists(self.camera_setting_path):
@@ -41,6 +45,29 @@ class ScanningSession:
 
         self._cami.turn_off()
         self._cami.save_camera_settings(self.camera_setting_path)
+
+    def shoot_dark(self):
+        """Shoots and saves a dark frame. """
+
+        self.dark = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
+        meta_dict = self._cami.get_crop_meta_dict()
+        F.save_frame(self.dark, self.session_root + '/' + P.extension_dark, meta_dict=meta_dict)
+
+    def shoot_white(self):
+        """Shoots and saves a white frame."""
+
+        self.white = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
+        meta_dict = self._cami.get_crop_meta_dict()
+        F.save_frame(self.white, self.session_root + '/' + P.extension_white, meta_dict=meta_dict)
+
+    def shoot_light(self):
+        """Shoots and saves a peaky light frame. """
+
+        self.light = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
+        meta_dict = self._cami.get_crop_meta_dict()
+        F.save_frame(self.light, self.session_root + '/' + P.extension_light, meta_dict=meta_dict)
+
+
 
 
 

@@ -63,8 +63,59 @@ class CameraInterface:
         logging.debug("Turning camera off.")
         self._cam.stop_acquisition()
 
+    def is_on(self):
+        return self._cam.is_acquiring()
+
     def get_frame(self) -> DataArray:
+        """Rapidly acquire a frame without any checks or options."""
+
         return self._cam.get_frame()
+
+    def get_frame_opt(self, count=1, method='mean') -> DataArray:
+        """Acquire a frame which is a mean or median of several frames.
+
+        Camera state (acquiring or not) will be preserved.
+
+        Parameters
+        ----------
+        count : int, default=1
+            If given, the mean of 'mean' consecutive frames is returned. If count == 1
+            this is the same as get_frame().
+        method: str, default = 'mean'
+            Either mean or median of count consecutive frames.
+
+        Returns
+        -------
+        frame : DataArray
+            The shot frame.
+        """
+
+        cam_was_acquiring = self._cam.is_acquiring()
+        if not self._cam.is_acquiring():
+            self._cam.start_acquisition()
+
+        if count == 1:
+            return self._cam.get_frame()
+            if not cam_was_acquiring:
+                self._cam.stop_acquisition()
+        else:
+            frame = None
+            frames = []
+            for _ in range(count):
+                frames.append(self._cam.get_frame())
+
+            frame = xr.concat(frames, dim='timestamp')
+            if method == 'mean':
+                frame = frame.mean(dim='timestamp')
+            elif method == 'median':
+                frame = frame.median(dim='timestamp')
+            else:
+                logging.error(f"Shooting method '{method}' not recognized. Use either 'mean' or 'median'.")
+
+            if not cam_was_acquiring:
+                self._cam.stop_acquisition()
+
+            return frame
 
     def exposure(self, value=None) -> int:
         """Set or print exposure"""
@@ -108,6 +159,13 @@ class CameraInterface:
         else:
             self._set_camera_feature('OffsetY', value)
 
+    def get_crop_meta_dict(self):
+        w = self.width()
+        wo = self.width_offset()
+        h = self.height()
+        ho = self.height_offset()
+        return {'Width':w, 'OffsetX':wo, 'Height':h, 'OffsetY':ho}
+
     def _initCam(self):
         """Initializes the camera.
 
@@ -126,7 +184,7 @@ class CameraInterface:
         self._cam = cameras[0]
 
         try:
-            logging.info("Initializing camera...", end=' ')
+            logging.info("Initializing camera...")
             self._cam.initialize()
             logging.info("done")
         except RuntimeError as re:

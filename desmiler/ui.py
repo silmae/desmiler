@@ -11,6 +11,8 @@ from core import properties as P
 from utilities import file_handling as F
 from imaging.preview import Preview
 
+import logging
+
 
 class UI:
 
@@ -76,7 +78,11 @@ class UI:
         If a session exists, dark should be saved to its folder, otherwise
         to preview folder.
         """
-        print("I would shoot a dark if I knew how.")
+
+        if self.sc is not None:
+            self.sc.shoot_dark()
+        else:
+            print(f"No session running. Start a session before shooting dark frame.")
 
     def shoot_white(self):
         """Shoots and saves a white frame.
@@ -84,7 +90,11 @@ class UI:
         If a session exists, dark should be saved to its folder, otherwise
         to preview folder.
         """
-        print("I would shoot a white if I knew how.")
+
+        if self.sc is not None:
+            self.sc.shoot_white()
+        else:
+            print(f"No session running. Start a session before shooting white frame.")
 
     def shoot_light(self):
         """Shoots and saves a peaky light frame.
@@ -92,12 +102,20 @@ class UI:
         If a session exists, dark should be saved to its folder, otherwise
         to preview folder.
         """
-        print("I would shoot a peaky light if I knew how.")
+
+        if self.sc is not None:
+            self.sc.shoot_light()
+        else:
+            print(f"No session running. Start a session before shooting light frame.")
 
 
 if __name__ == '__main__':
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
     ui.start_session('my_new_session')
-    ui.start_freeform_session()
+    ui.shoot_dark()
+    ui.shoot_white()
+    ui.shoot_light()
+    #ui.start_freeform_session()
     #ui.start_preview()
 
