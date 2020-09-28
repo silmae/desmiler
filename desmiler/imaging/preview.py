@@ -206,7 +206,8 @@ class Preview:
                 logging.warning("No animation event source to start. Creating new animation.")
                 self._cami.turn_on()
                 self._animation = animation.FuncAnimation(self._fig, self._snap, interval=10, blit=False)
-        
+
+        self._cami.turn_on()
         self._animation_is_running = True
         plt.show()
 
@@ -230,7 +231,7 @@ class Preview:
         self._plots[0].set_data(frame.values)
 
         frame_var = frame.var(dim='y')
-        
+
         for i, _ in enumerate(self._vertical_line_positions):
             # Shift all values one step to the left and place new max variance last.
             self._mvh_list[i] = np.roll(self._mvh_list[i], -1)
