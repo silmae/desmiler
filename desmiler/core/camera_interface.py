@@ -208,13 +208,22 @@ class CameraInterface:
 
         # Make into absolute path so that camazing gets it correctly.
         save_path = os.path.abspath(relative_path)
-        print(f"Trying to save camera settings to '{save_path}'")
-        self._cam.save_config_to_file(str(save_path), overwrite=True)
+        print(f"Trying to save camera settings to '{save_path}'", end='...')
+        try:
+            self._cam.save_config_to_file(str(save_path), overwrite=True)
+        except:
+            print(f"failed.")
+        print("done.")
+
 
     def load_camera_settings(self, relative_path):
         """Load camera settings from a file in given path."""
 
         # Make into absolute path so that camazing gets it correctly.
         load_path = os.path.abspath(relative_path)
-        print(f"Trying to load camera settings from '{load_path}'")
-        self._cam.load_config_from_file(str(load_path))
+        print(f"Trying to load camera settings from '{load_path}'", end='...')
+        try:
+            self._cam.load_config_from_file(str(load_path))
+        except:
+            print(f"failed.")
+        print("done.")

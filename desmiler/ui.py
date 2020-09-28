@@ -48,12 +48,12 @@ class UI:
         self.start_session(P.freeform_session_name)
 
     def close_session(self):
-        print(f"Closing session '{self.sc.session_name}'", end='... ')
+        print(f"Closing session '{self.sc.session_name}'")
         # TODO Check that everything is OK before closing
         self.sc.close()
-        self.sc = None
+        del self.sc
 
-        print("done. Ready to open a new session.")
+        print(f"Session closed.")
 
     def start_preview(self):
         """Start a new preview for inspecting the camera feed.

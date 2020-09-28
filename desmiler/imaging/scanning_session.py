@@ -23,7 +23,7 @@ class ScanningSession:
         self._cami = cami
 
         if self.session_exists():
-            print(f"Found existing session. Loading files..")
+            print(f"Found existing session.")
             if os.path.exists(self.camera_setting_path):
                 print(f"Found existing camera settings")
                 self._cami.load_camera_settings(self.camera_setting_path)
