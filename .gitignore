@@ -8,3 +8,7 @@ desmiler/frames/*
 desmiler/scans/*
 desmiler/data/*
 desmiler/img/*
+frames/*
+scans/*
+data/*
+img/*
