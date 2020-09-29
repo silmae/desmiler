@@ -52,4 +52,3 @@ def save_frame(frame:DataArray, path:str, meta_dict):
 
     # FIXME This fails if the file is already open.
     frameData.to_netcdf(os.path.normpath(path_s), format='NETCDF4')
-    
