@@ -23,15 +23,31 @@ class ScanningSession:
         self.camera_setting_path = self.session_root + '/' + P.settings_file_name
         self._cami = cami
 
+        self.dark_path  = os.path.abspath(self.session_root + '/' + P.extension_dark + '.nc')
+        self.white_path = os.path.abspath(self.session_root + '/' + P.extension_white + '.nc')
+        self.light_path = os.path.abspath(self.session_root + '/' + P.extension_light + '.nc')
         self.dark = None
         self.white = None
         self.light = None
 
         if self.session_exists():
             print(f"Found existing session.")
+            logging.info(f"Searching for existing camera settings from '{self.camera_setting_path}'")
             if os.path.exists(self.camera_setting_path):
                 print(f"Found existing camera settings")
                 self._cami.load_camera_settings(self.camera_setting_path)
+
+            logging.info(f"Searching for existing dark frame from '{self.dark_path}'")
+            if os.path.exists(self.dark_path):
+                print(f"Found existing dark frame. Loading into memory")
+
+            logging.info(f"Searching for existing white frame from '{self.white_path}'")
+            if os.path.exists(self.white_path):
+                print(f"Found existing white frame. Loading into memory")
+
+            logging.info(f"Searching for existing light frame from '{self.light_path}'")
+            if os.path.exists(self.light_path):
+                print(f"Found existing light frame. Loading into memory")
         else:
             F.create_directory(self.session_root)
 

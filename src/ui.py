@@ -112,17 +112,17 @@ class UI:
         if self.sc is not None:
             self.sc.crop(width, width_offset, height, height_offset, full)
         else:
-            print(f"Asked for cropping but nothing to crop.")
+            print(f"Asked for cropping but there is no active session to crop.")
 
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
     ui.start_session('my_new_session')
-    ui.crop(200,100,150,300)
-    ui.shoot_dark()
-    ui.shoot_white()
-    ui.shoot_light()
+    # ui.crop(200,100,150,300)
+    # ui.shoot_dark()
+    # ui.shoot_white()
+    # ui.shoot_light()
     #ui.start_freeform_session()
-    #ui.start_preview()
+    # ui.start_preview()
 
