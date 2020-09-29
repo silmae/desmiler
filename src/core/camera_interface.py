@@ -32,6 +32,7 @@ import os
 
 from camazing import CameraList
 from core import properties as P
+from utilities import numeric as N
 from camazing.feature_types import AccessModeError
 from genicam2.genapi import OutOfRangeException
 
@@ -158,6 +159,79 @@ class CameraInterface:
             return self._cam['OffsetY'].value
         else:
             self._set_camera_feature('OffsetY', value)
+
+    def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
+        """Change the size and position of the frame acquired from the camera.
+
+        Retains camera's acquiring state.
+
+        Parameters
+        ----------
+        full : bool, optional, default=False
+            If true, all other passed values are ignored and cropping is
+            set to camera's full frame size with zero offset.
+
+        Returns
+        -------
+        old_vals, new_vals
+        Both are 4-tuples containing (width, width_offset, height, height_offset)
+        """
+
+        was_acquiring = self._cam.is_acquiring()
+        self._cam.stop_acquisition()
+
+        w_max = self._cam['Width'].max
+        h_max = self._cam['Height'].max
+
+        # Old values
+        w = self._cam['Width'].value
+        w_o = self._cam['OffsetX'].value
+        h = self._cam['Height'].value
+        h_o = self._cam['OffsetY'].value
+        old_vals = (w,w_o,h,h_o)
+
+        if full:
+            self._cam['Width'].value = w_max
+            self._cam['OffsetX'].value = 0
+            self._cam['Height'].value = h_max
+            self._cam['OffsetY'].value = 0
+        else:
+            if width is None:
+                width = w
+            else:
+                width = N.clamp(width, 0, w_max)
+
+            if width_offset is None:
+                width_offset = w_o
+            else:
+                width_offset = N.clamp(width_offset, 0, w_max - 1)
+
+            if height is None:
+                height = h
+            else:
+                height = N.clamp(height, 0, h_max)
+
+            if height_offset is None:
+                height_offset = h_o
+            else:
+                height_offset = N.clamp(height_offset, 0, h_max - 1)
+
+        self._cam['Width'].value = width
+        self._cam['OffsetX'].value = width_offset
+        self._cam['Height'].value = height
+        self._cam['OffsetY'].value = height_offset
+
+        width = self._cam['Width'].value
+        width_offset = self._cam['OffsetX'].value
+        height = self._cam['Height'].value
+        height_offset = self._cam['OffsetY'].value
+
+        new_vals = (width, width_offset, height, height_offset)
+
+        if was_acquiring:
+            self._cam.start_acquisition()
+
+        return old_vals, new_vals
 
     def get_crop_meta_dict(self):
         w = self.width()
