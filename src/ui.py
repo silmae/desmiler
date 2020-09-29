@@ -114,11 +114,18 @@ class UI:
         else:
             print(f"Asked for cropping but there is no active session to crop.")
 
+    def run_scan(self):
+        if self.sc is not None:
+            self.sc.run_scan()
+        else:
+            print(f"Asked to run a scan but there is no active session to run.")
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
     ui.start_session('my_new_session')
+    ui.run_scan()
     # ui.crop(200,100,150,300)
     # ui.shoot_dark()
     # ui.shoot_white()

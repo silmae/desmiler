@@ -5,7 +5,8 @@
 path_rel_scan = '../scans'
 frame_folder_name = '../frames'
 
-settings_file_name = 'camera_settings.toml'
+camera_settings_file_name = 'camera_settings.toml'
+scan_settings_file_name = 'scan_settings.toml'
 
 extension_dark = 'dark'
 extension_white = 'white'
