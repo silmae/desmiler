@@ -18,13 +18,13 @@ class ScanningSession:
 
     # Session log? At least some metadata (datetime, camera settings etc.) should be saved I think.
 
-    def __init__(self, session_name:str, cami:CameraInterface):
+    def __init__(self, session_name:str):
         print(f"Creating session '{session_name}'")
         self.session_name = session_name
         self.session_root = P.path_rel_scan + '/' + session_name
         self.camera_setting_path = self.session_root + '/' + P.camera_settings_file_name
         self.scan_settings_path = os.path.abspath(self.session_root + '/' + P.scan_settings_file_name)
-        self._cami = cami
+        self._cami = None
         self.scan_settings = None
 
         self.dark_path  = os.path.abspath(self.session_root + '/' + P.extension_dark + '.nc')
@@ -37,26 +37,7 @@ class ScanningSession:
         if self.session_exists():
             print(f"Found existing session.")
 
-            # load and apply camera settings before scan settings so that
-            # the scanning can be controlled by scan settings toml, which
-            # overwrite the camera settings
-            logging.info(f"Searching for existing camera settings from '{self.camera_setting_path}'")
-            if os.path.exists(self.camera_setting_path):
-                print(f"Found existing camera settings")
-                self._cami.load_camera_settings(self.camera_setting_path)
-
-            logging.info(f"Searching for existing scan settings from '{self.scan_settings_path}'")
-            if os.path.exists(self.scan_settings_path):
-                print(f"Found existing scan settings")
-                try:
-                    with open(self.scan_settings_path, 'r') as file:
-                        self.scan_settings = toml.load(file)
-                    print(self.scan_settings)
-                except TypeError as te:
-                    logging.error(te)
-                except TomlDecodeError as tde:
-                    logging.error(tde)
-
+            self.load_scan_control()
 
             logging.info(f"Searching for existing dark frame from '{self.dark_path}'")
             if os.path.exists(self.dark_path):
@@ -73,6 +54,35 @@ class ScanningSession:
         else:
             F.create_directory(self.session_root)
 
+    def _init_cami(self):
+        if self._cami is None:
+            self._cami = CameraInterface()
+
+            # load and apply camera settings before scan settings so that
+            # the scanning can be controlled by scan settings toml, which
+            # overwrite the camera settings
+            logging.info(f"Searching for existing camera settings from '{self.camera_setting_path}'")
+            if os.path.exists(self.camera_setting_path):
+                print(f"Found existing camera settings")
+                self._cami.load_camera_settings(self.camera_setting_path)
+
+            # Load control after camera initialization to override
+            self.load_scan_control()
+
+    def load_scan_control(self):
+
+        logging.info(f"Searching for existing scan settings from '{self.scan_settings_path}'")
+        if os.path.exists(self.scan_settings_path):
+            print(f"Found existing scan settings")
+            try:
+                with open(self.scan_settings_path, 'r') as file:
+                    self.scan_settings = toml.load(file)
+                print(self.scan_settings)
+            except TypeError as te:
+                logging.error(te)
+            except TomlDecodeError as tde:
+                logging.error(tde)
+
     def session_exists(self) -> bool:
         if os.path.exists(self.session_root):
             return True
@@ -82,8 +92,10 @@ class ScanningSession:
     def close(self):
         """Turn camera off and save all stuff."""
 
-        self._cami.turn_off()
-        self._cami.save_camera_settings(self.camera_setting_path)
+        if self._cami is not None:
+            self._cami.turn_off()
+            self._cami.save_camera_settings(self.camera_setting_path)
+            del self._cami
 
     def shoot_dark(self):
         """Shoots and saves a dark frame.
@@ -113,7 +125,7 @@ class ScanningSession:
         self._shoot_reference(P.extension_light)
 
     def _shoot_reference(self, ref_type:str):
-
+        self._init_cami()
         if ref_type in (P.extension_dark, P.extension_white, P.extension_light):
             logging.debug(f"Crop before starting to shoot {ref_type}:\n {self._cami.get_crop_meta_dict()}")
             old, _ = self._cami.crop(full=True)
@@ -144,7 +156,30 @@ class ScanningSession:
             for key, val in self.scan_settings['scan_settings'].items():
                 print(f"\t'{key}': {val}")
             self.crop(width, width_offset, height, height_offset)
+        else:
+            self._init_cami()
+            # TODO implement
 
     def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
-        self._cami.crop(width, width_offset, height, height_offset, full)
+        """FIXME this may be removed... i think. The control file should take care of cropping."""
+
+        if self._cami is not None:
+            self._cami.crop(width, width_offset, height, height_offset, full)
+        else:
+            logging.warning(f"Cannot crop session without a camera.")
+
+def create_example_scan():
+    """Creates an example if does not exist."""
+
+    example_control_path = os.path.abspath(P.path_rel_scan + '/' + P.example_scan_name + '/' + P.scan_settings_file_name)
+
+    if not os.path.exists(example_control_path):
+        print("Creating example scan...", end='')
+        example_sc = ScanningSession(P.example_scan_name)
+        control_toml_s = toml.loads(P.example_scan_control_content)
+
+        with open(example_control_path, "w") as file:
+            toml.dump(control_toml_s, file)
+
+        print(f"done. You can find it in '{example_control_path}'")
 

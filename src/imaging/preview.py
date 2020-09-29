@@ -54,27 +54,16 @@ class Preview:
 
     _cami = None
 
-    def __init__(self, cami:CameraInterface):
+    def __init__(self):
         """Initialize the LiveFeed object with given camera and dark frame.
-        
-        Parameters
-        ----------
-        cami : CameraInterface object
-            Camera to be set for this feed.
 
-        Raises
-        ------
-        TypeError
-            If cam is None
         """
 
         print(f"Initializing Preview object.")
 
         self._window_name = 'Preview'
-        if cami is None:
-            raise TypeError("Camera interface must be provided.")
 
-        self._cami = cami
+        self._cami = CameraInterface()
         self._center_vertical_lines()
         self._center_horizontal_lines()
 
@@ -89,7 +78,8 @@ class Preview:
         self._center_horizontal_lines()
                     
     def close(self):
-        del self._cami
+        if self._cami is not None:
+            del self._cami
         plt.close(self._window_name)
 
     def _initPlots(self):
