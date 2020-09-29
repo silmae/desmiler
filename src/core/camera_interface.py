@@ -163,7 +163,7 @@ class CameraInterface:
     def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
         """Change the size and position of the frame acquired from the camera.
 
-        Retains camera's acquiring state.
+        Retains camera's acquiring state. Stops acquisition during changes.
 
         Parameters
         ----------
@@ -216,10 +216,10 @@ class CameraInterface:
             else:
                 height_offset = N.clamp(height_offset, 0, h_max - 1)
 
-        self._cam['Width'].value = width
-        self._cam['OffsetX'].value = width_offset
-        self._cam['Height'].value = height
-        self._cam['OffsetY'].value = height_offset
+            self._cam['Width'].value = width
+            self._cam['OffsetX'].value = width_offset
+            self._cam['Height'].value = height
+            self._cam['OffsetY'].value = height_offset
 
         width = self._cam['Width'].value
         width_offset = self._cam['OffsetX'].value

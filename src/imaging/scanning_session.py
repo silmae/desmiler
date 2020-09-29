@@ -10,6 +10,7 @@ import os
 from core import properties as P
 from utilities import file_handling as F
 from core.camera_interface import CameraInterface
+import logging
 
 class ScanningSession:
 
@@ -47,27 +48,53 @@ class ScanningSession:
         self._cami.save_camera_settings(self.camera_setting_path)
 
     def shoot_dark(self):
-        """Shoots and saves a dark frame. """
+        """Shoots and saves a dark frame.
 
-        self.dark = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
-        meta_dict = self._cami.get_crop_meta_dict()
-        F.save_frame(self.dark, self.session_root + '/' + P.extension_dark, meta_dict=meta_dict)
+        The frame is acquired with full sensor size. The old frame size is
+        resumed after acquisition.
+        """
+
+        self._shoot_reference(P.extension_dark)
 
     def shoot_white(self):
-        """Shoots and saves a white frame."""
+        """Shoots and saves a white frame.
 
-        self.white = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
-        meta_dict = self._cami.get_crop_meta_dict()
-        F.save_frame(self.white, self.session_root + '/' + P.extension_white, meta_dict=meta_dict)
+        The frame is acquired with full sensor size. The old frame size is
+        resumed after acquisition.
+        """
+
+        self._shoot_reference(P.extension_white)
 
     def shoot_light(self):
-        """Shoots and saves a peaky light frame. """
+        """Shoots and saves a peaky light frame.
 
-        self.light = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
-        meta_dict = self._cami.get_crop_meta_dict()
-        F.save_frame(self.light, self.session_root + '/' + P.extension_light, meta_dict=meta_dict)
+        The frame is acquired with full sensor size. The old frame size is
+        resumed after acquisition.
+        """
 
+        self._shoot_reference(P.extension_light)
 
+    def _shoot_reference(self, ref_type:str):
 
+        if ref_type in (P.extension_dark, P.extension_white, P.extension_light):
+            logging.debug(f"Crop before starting to shoot {ref_type}:\n {self._cami.get_crop_meta_dict()}")
+            old, _ = self._cami.crop(full=True)
+            logging.debug(f"New crop:\n {self._cami.get_crop_meta_dict()}")
+            ref_frame = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
+            meta_dict = self._cami.get_crop_meta_dict()
+            self._cami.crop(*old)
+            logging.debug(f"Reverted back to crop:\n {self._cami.get_crop_meta_dict()}")
+            if ref_type == P.extension_dark:
+                self.dark = ref_frame
+            if ref_type == P.extension_white:
+                self.white = ref_frame
+            if ref_type == P.extension_light:
+                self.white = ref_frame
 
+            F.save_frame(ref_frame, self.session_root + '/' + ref_type, meta_dict=meta_dict)
+        else:
+            logging.error(f"Wrong reference type '{ref_type}'")
+
+    def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
+        self._cami.crop(width, width_offset, height, height_offset, full)
 

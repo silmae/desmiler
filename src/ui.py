@@ -108,11 +108,18 @@ class UI:
         else:
             print(f"No session running. Start a session before shooting light frame.")
 
+    def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
+        if self.sc is not None:
+            self.sc.crop(width, width_offset, height, height_offset, full)
+        else:
+            print(f"Asked for cropping but nothing to crop.")
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
     ui.start_session('my_new_session')
+    ui.crop(200,100,150,300)
     ui.shoot_dark()
     ui.shoot_white()
     ui.shoot_light()
