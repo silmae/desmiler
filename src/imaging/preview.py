@@ -64,8 +64,8 @@ class Preview:
         self._window_name = 'Preview'
 
         self._cami = CameraInterface()
-        self._center_vertical_lines()
-        self._center_horizontal_lines()
+        self._vertical_line_positions = self._make_line_positions('vertical')
+        self._horizontal_line_positions = self._make_line_positions('horizontal')
 
     def reset(self):
         self.stop()
@@ -74,8 +74,8 @@ class Preview:
         except:
             logging.error(f"Could not close preview window '{self._window_name}'.")
         self._plots_initialized = False
-        self._center_vertical_lines()
-        self._center_horizontal_lines()
+        self._vertical_line_positions = self._make_line_positions('vertical')
+        self._horizontal_line_positions = self._make_line_positions('horizontal')
                     
     def close(self):
         if self._cami is not None:
@@ -217,6 +217,7 @@ class Preview:
         """Update function for the animation."""
 
         frame = self._cami.get_frame()
+        # max_inte = frame.max().item()
 
         self._plots[0].set_data(frame.values)
 
@@ -228,10 +229,14 @@ class Preview:
             self._mvh_list[i][len(self._mvh_list[0]) - 1] = frame_var[self._vertical_line_positions[i]]
             self._plots[1 + i].set_data(np.arange(0, len(self._mvh_list[0])), self._mvh_list[i])
 
-        self._var_max_pos = frame_var.argmax(dim='x').item()
-        frame_max_var = frame_var[self._var_max_pos].item()
-        frame_max_px = frame.max().item()
-        self._rescale_plots(frame_max_var, frame_max_px)
+        # self._var_max_pos = frame_var.argmax(dim='x').item()
+        # frame_max_var = frame_var[self._var_max_pos].item()
+        # frame_max_px = frame.max().item()
+
+        # self._rescale_plots(frame_max_var, frame_max_px)
+        self._subplot_variance.relim()
+        self._subplot_column_values.relim()
+        self._subplot_row_values.relim()
 
         # Horizontal lines
         for i, _ in enumerate(self._horizontal_line_positions):
@@ -266,34 +271,51 @@ class Preview:
 
         extra_space = 1.1
         low_limit = 0.7
-        if frame_max_var > self._subplot_variance.get_ylim()[1]:  # or \
+        var_ylim = self._subplot_variance.get_ylim()[1]
+        var_next = extra_space * frame_max_var
+        if frame_max_var > var_ylim or frame_max_var < low_limit * var_ylim:  # or \
             self._subplot_variance.relim()
-            self._subplot_variance.set_ylim(0, extra_space * frame_max_var)
+            # self._subplot_variance.set_ylim(0, var_next)
+
             # print(1, "  max: ", frameMaxVar, " new lim: ", self._subPlotVariance.get_ylim()[1])
-        if frame_max_var < low_limit * self._subplot_variance.get_ylim()[1]:  # or \
-            self._subplot_variance.relim()
-            self._subplot_variance.set_ylim(0, extra_space * frame_max_var)
+        # if :  # or \
+        #     self._subplot_variance.relim()
+        #     self._subplot_variance.set_ylim(0, extra_space * frame_max_var)
             # print(4, "  max: ", frameMaxVar, " new lim: ", self._subPlotVariance.get_ylim()[1])
 
-        if frame_max_px > self._subplot_column_values.get_ylim()[1]:  # or \
+        col_ylim = self._subplot_column_values.get_ylim()[1]
+        spect_next = extra_space * frame_max_px
+        if frame_max_px > col_ylim or frame_max_px < low_limit * col_ylim:  # or \
             self._subplot_column_values.relim()
-            self._subplot_column_values.set_ylim(0, extra_space * frame_max_px)
+            # self._subplot_column_values.set_ylim(0,spect_next)
             # print(2, "  max: ", frameMaxPx, " new lim: ", self._subPlotColumnValues.get_ylim()[1])
-        if frame_max_px < low_limit * self._subplot_column_values.get_ylim()[1]:  # or \
-            self._subplot_column_values.relim()
-            self._subplot_column_values.set_ylim(0, extra_space * frame_max_px)
+        # if :  # or \
+        #     self._subplot_column_values.relim()
+        #     self._subplot_column_values.set_ylim(0, extra_space * frame_max_px)
             # print(5, "  max: ", frameMaxPx, " new lim: ", self._subPlotColumnValues.get_ylim()[1])
-        if frame_max_px > self._subplot_row_values.get_ylim()[1]:  # or \
+        row_ylim = self._subplot_row_values.get_ylim()[1]
+        if frame_max_px > row_ylim or frame_max_px < low_limit * row_ylim:  # or \
             self._subplot_row_values.relim()
-            self._subplot_row_values.set_ylim(0, extra_space * frame_max_px)
+            # self._subplot_row_values.set_ylim(0, spect_next)
             # print(3, "  max: ", frameMaxPx, " new lim: ", self._subPlotRowValues.get_ylim()[1])
-        if frame_max_px < low_limit * self._subplot_row_values.get_ylim()[1]:
-            self._subplot_row_values.relim()
-            self._subplot_row_values.set_ylim(0, extra_space * frame_max_px)
+        # if :
+        #     self._subplot_row_values.relim()
+        #     self._subplot_row_values.set_ylim(0, extra_space * frame_max_px)
             # print(6, "  max: ", frameMaxPx, " new lim: ", self._subPlotRowValues.get_ylim()[1])
 
-    def _make_line_positions(self, out, max_dim, center=None,  spacing=None):
+    def _make_line_positions(self, orientation, center=None,  spacing=None):
         """Centers three lines around a center line."""
+
+        max_w = self._cami.width()
+        max_h = self._cami.height()
+        if orientation == 'vertical':
+            max_dim = max_w
+        elif orientation == 'horizontal':
+            max_dim = max_h
+        else:
+            logging.warning(f"Orientation of line position must be either horixontal or vertical."
+                            f"Using shorter dimension as a backup.")
+            max_dim = min(max_w, max_h)
 
         if center is None:
             center = int(max_dim/2)
@@ -305,33 +327,4 @@ class Preview:
         out[1] = center
         out[2] = (center + spacing)
         np.clip(out, 0, max_dim-1, out=out)
-
-    def _center_horizontal_lines(self, center=None, spacing=None):
-        """Centers three horizontal lines around a center line.
-
-        Parameters
-        ----------
-        center : int
-            Row index of the center line.
-        spacing : int
-            Space (in pixels) to be left between outer line and center line.
-        """
-
-        max_dim = self._cami.height()
-        self._horizontal_line_positions = np.zeros(3, dtype=int)
-        self._make_line_positions(self._horizontal_line_positions, max_dim, center, spacing)
-
-    def _center_vertical_lines(self, center=None, spacing=None):
-        """Centers three vertical lines around a center line.
-
-        Parameters
-        ----------
-        center : int
-            Column index of the center line.
-        spacing : int
-            Space (in pixels) to be left between outer line and center line.
-        """
-
-        max_dim = self._cami.width()
-        self._vertical_line_positions = np.zeros(3, dtype=int)
-        self._make_line_positions(self._vertical_line_positions, max_dim, center, spacing)
+        return out
