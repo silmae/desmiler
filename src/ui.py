@@ -8,9 +8,12 @@ Console UI for controlling various funktionalities.
 from imaging.scanning_session import ScanningSession
 import imaging.scanning_session as scanning_session
 from core.camera_interface import CameraInterface
+import analysis.frame_inspector as frame_inspector
 from core import properties as P
 from utilities import file_handling as F
 from imaging.preview import Preview
+
+import numpy as np
 
 import logging
 
@@ -124,6 +127,20 @@ class UI:
         else:
             print(f"Asked to run a scan but there is no active session to run.")
 
+    def inspect_light(self):
+        if self.sc is not None:
+            path = self.sc.session_root + '/' + P.extension_light
+            frame_ds = F.load_frame(path)
+            frame = frame_ds.frame
+            frame_inspector.plot_frame(frame)
+            frame_inspector.plot_frame_spectra(frame)
+
+            # f_vals = frame.values
+            # log_frame = frame
+            # log_frame.values = np.log(f_vals)
+            # frame_inspector.plot_frame(frame)
+            # frame_inspector.plot_frame_spectra(log_frame)
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
@@ -134,6 +151,7 @@ if __name__ == '__main__':
     # ui.shoot_dark()x
     # ui.shoot_white()
     # ui.shoot_light()
-    # ui.start_freeform_session()
+    ui.start_freeform_session()
+    ui.inspect_light()
     # ui.start_preview()
 
