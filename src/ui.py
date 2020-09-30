@@ -29,6 +29,14 @@ class UI:
 
         scanning_session.create_example_scan()
 
+    def __del__(self):
+        if self.sc is not None:
+            self.sc.close()
+            del self.sc
+        if self.preview is not None:
+            self.preview.close()
+            del self.preview
+
     def start_session(self, session_name:str) -> ScanningSession:
         """Start new named scanning session with its own folder."""
 
@@ -120,12 +128,12 @@ class UI:
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
-    ui.start_session('my_new_session')
-    ui.run_scan()
-    ui.crop(200,100,150,300)
-    ui.shoot_dark()
-    ui.shoot_white()
-    ui.shoot_light()
-    ui.start_freeform_session()
-    ui.start_preview()
+    # ui.start_session('my_new_session')
+    # ui.run_scan()
+    # ui.crop(200,100,150,300)
+    # ui.shoot_dark()x
+    # ui.shoot_white()
+    # ui.shoot_light()
+    # ui.start_freeform_session()
+    # ui.start_preview()
 
