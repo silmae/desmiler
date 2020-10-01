@@ -7,10 +7,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 import datetime as dt
+import math
 import analysis.frame_inspector as frame_inspector
 
 base_path = '../../examples/'
-example_spectrogram_path = base_path + 'fluorescence_spectrogram.nc'
+
+example_spectrogram_path = os.path.abspath(base_path + 'fluorescence_spectrogram.nc')
+undistorted_frame_path = os.path.abspath(base_path + 'undistorted_frame.nc')
+smiled_frame_path = os.path.abspath(base_path + 'smiled_frame.nc')
 
 def light_frame_to_spectrogram():
     """Creates a mean spectrogram from few rows of a frame and saves it.
@@ -40,8 +44,7 @@ def make_undistorted_frame():
     Attributes are omitted though.
     """
 
-    perfect_frame_path = os.path.abspath(base_path + 'undistorted_frame.nc')
-    if not os.path.exists(perfect_frame_path):
+    if not os.path.exists(undistorted_frame_path):
         source = F.load_frame(example_spectrogram_path)
         destination_frame_height = 800
         source_data = source.frame.data
@@ -64,11 +67,88 @@ def make_undistorted_frame():
         )
 
         #frame_inspector.plot_frame(frame)
-        F.save_frame(frame, perfect_frame_path)
+        F.save_frame(frame, undistorted_frame_path)
     else:
-        print(f"Undistorted example frame already exists in '{perfect_frame_path}'. Doing nothing.")
+        print(f"Undistorted example frame already exists in '{undistorted_frame_path}'. Doing nothing.")
+
+def load_undistorted_frame():
+    if not os.path.exists(undistorted_frame_path):
+        make_undistorted_frame()
+
+    frame_ds = F.load_frame(undistorted_frame_path)
+    return frame_ds
+
+def shift_matrix_generator(output_array, frame_width):
+    """This is the inverse of what would be used to correct a smile effect.
+
+    TODO Should probably move to somplace else.
+    """
+
+    circle_center_x = -15000
+    circle_center_y = 400
+    circle_r = abs(circle_center_x)
+
+    for y in range(len(output_array[:,0])):
+        yy = y - circle_center_y
+        theta = math.asin(yy / circle_r)
+        # Copysign for getting signed distance
+        px = (1 - math.cos(theta)) * math.copysign(circle_r, circle_center_x)
+        for x in range(frame_width):
+            output_array[y, x] = px
+
+
+def interpolative_shift(frame, distorition_matrix):
+    """ Desmile frame using row-wise interpolation of
+        pixel intensities.
+    """
+
+    distorition_matrix = xr.DataArray(distorition_matrix, dims=('y', 'x'))
+
+    ds = xr.Dataset(
+        data_vars={
+            'frame': frame,
+            'x_shift': distorition_matrix,
+        },
+    )
+
+    ds['distorted_x'] = ds.x - ds.x_shift
+    ds.coords['new_x'] = np.linspace(0, frame.x.size, frame.x.size)
+    ds = ds.groupby('y').apply(distort_row)
+
+    ds = ds.drop('x')
+    renames = {'new_x': 'x'}
+    ds = ds.rename(renames)
+
+    return ds.frame
+
+
+def distort_row(row):
+    """ Used by interpolative shift only. """
+
+    row['x'] = row.distorted_x
+    new_x = row.new_x
+    row = row.drop(['distorted_x', 'new_x'])
+    row = row.interp(x=new_x, method='linear')
+    return row
+
+def make_smiled_frame():
+    """Creates an example of a frame suffering from spectral smile to examples directory.
+
+    """
+
+    u_frame_ds = load_undistorted_frame()
+    u_frame = u_frame_ds.frame
+    distortion_array = np.zeros_like(u_frame.data)
+    shift_matrix_generator(distortion_array, u_frame.x.size)
+    u_frame = interpolative_shift(u_frame, distortion_array)
+    F.save_frame(u_frame, smiled_frame_path)
+    # plt.imshow(u_frame)
+    # plt.show()
+
+
 
 
 if __name__ == '__main__':
     #light_frame_to_spectrogram()
-    make_undistorted_frame()
+    # make_undistorted_frame()
+    #make_smiled_frame()
