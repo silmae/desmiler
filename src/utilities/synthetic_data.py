@@ -14,7 +14,6 @@ base_path = '../../examples/'
 
 example_spectrogram_path = os.path.abspath(base_path + 'fluorescence_spectrogram.nc')
 undistorted_frame_path = os.path.abspath(base_path + 'undistorted_frame.nc')
-smiled_frame_path = os.path.abspath(base_path + 'smiled_frame.nc')
 
 def light_frame_to_spectrogram():
     """Creates a mean spectrogram from few rows of a frame and saves it.
@@ -46,16 +45,23 @@ def make_undistorted_frame():
 
     if not os.path.exists(undistorted_frame_path):
         source = F.load_frame(example_spectrogram_path)
-        destination_frame_height = 800
+        height = 800
+        width = source.frame.x.size
         source_data = source.frame.data
         print(source_data.shape)
-        expanded_data = np.repeat(source_data, destination_frame_height)
-        expanded_data = np.reshape(expanded_data, (source.frame.x.size, destination_frame_height))
+        expanded_data = np.repeat(source_data, height)
+        expanded_data = np.reshape(expanded_data, (width, height))
         expanded_data = expanded_data.transpose()
-        print(expanded_data.shape)
+        # print(expanded_data.shape)
+
+        # Add random noise
+        max_pixel_val = source_data.max()
+        rando = np.random.uniform(0, 0.05*max_pixel_val, size=(height, width))
+        expanded_data = expanded_data + rando
+
         coords = {
             "x": ("x", np.arange(0, source.frame.x.size) + 0.5),
-            "y": ("y", np.arange(0, destination_frame_height) + 0.5),
+            "y": ("y", np.arange(0, height) + 0.5),
             "timestamp": dt.datetime.today().timestamp(),
         }
         dims = ('y', 'x')
@@ -66,7 +72,7 @@ def make_undistorted_frame():
             coords=coords,
         )
 
-        #frame_inspector.plot_frame(frame)
+        frame_inspector.plot_frame(frame)
         F.save_frame(frame, undistorted_frame_path)
     else:
         print(f"Undistorted example frame already exists in '{undistorted_frame_path}'. Doing nothing.")
@@ -78,23 +84,37 @@ def load_undistorted_frame():
     frame_ds = F.load_frame(undistorted_frame_path)
     return frame_ds
 
-def shift_matrix_generator(output_array, frame_width):
+def generate_distortion_matrix(width, height, method='smile'):
     """This is the inverse of what would be used to correct a smile effect.
 
     TODO Should probably move to somplace else.
     """
 
-    circle_center_x = -15000
-    circle_center_y = 400
-    circle_r = abs(circle_center_x)
+    # height = len(output_array[:, 0])
+    # width = len(output_array[0, :])
 
-    for y in range(len(output_array[:,0])):
-        yy = y - circle_center_y
-        theta = math.asin(yy / circle_r)
-        # Copysign for getting signed distance
-        px = (1 - math.cos(theta)) * math.copysign(circle_r, circle_center_x)
-        for x in range(frame_width):
-            output_array[y, x] = px
+    distortion_matrix = np.zeros((height,width))
+
+    if method == 'smile':
+        circle_center_x = -15000
+        circle_center_y = 400
+        circle_r = abs(circle_center_x)
+
+        for y in range(height-1):
+            yy = y - circle_center_y
+            theta = math.asin(yy / circle_r)
+            # Copysign for getting signed distance
+            px = (1 - math.cos(theta)) * math.copysign(circle_r, circle_center_x)
+            for x in range(width-1):
+                distortion_matrix[y, x] = px
+    if method == 'tilt':
+        max_tilt = 10
+        col = np.linspace(-int(max_tilt/2),int(max_tilt/2),num=height)
+        distortion_matrix = np.repeat(col, width)
+        distortion_matrix = np.reshape(distortion_matrix, (height, width))
+        # distortion_matrix = distortion_matrix.transpose()
+
+    return distortion_matrix
 
 
 def interpolative_shift(frame, distorition_matrix):
@@ -131,24 +151,43 @@ def distort_row(row):
     row = row.interp(x=new_x, method='linear')
     return row
 
-def make_smiled_frame():
+def make_distorted_frame(distortions):
     """Creates an example of a frame suffering from spectral smile to examples directory.
 
     """
 
     u_frame_ds = load_undistorted_frame()
     u_frame = u_frame_ds.frame
-    distortion_array = np.zeros_like(u_frame.data)
-    shift_matrix_generator(distortion_array, u_frame.x.size)
-    u_frame = interpolative_shift(u_frame, distortion_array)
-    F.save_frame(u_frame, smiled_frame_path)
-    # plt.imshow(u_frame)
-    # plt.show()
+    save_path = base_path + 'distorted'
+    if 'smile' in distortions:
+        print(f"adding smile distortion")
+        distortion_matrix = generate_distortion_matrix(u_frame.x.size, u_frame.y.size, method='smile')
+        u_frame = interpolative_shift(u_frame, distortion_matrix)
+        save_path = save_path + '_smile'
+    if 'tilt' in distortions:
+        print(f"adding tilt distortion")
+        distortion_matrix = generate_distortion_matrix(u_frame.x.size, u_frame.y.size, method='tilt')
+        u_frame = interpolative_shift(u_frame, distortion_matrix)
+        save_path = save_path + '_tilt'
+    if 'noise' in distortions:
+        print(f"Noise generation not implemented yet.")
+        # save_path = save_path + '_noise'
 
+    F.save_frame(u_frame, save_path)
+    plt.imshow(u_frame)
+    plt.show()
+
+def show_me():
+    source = F.load_frame(example_spectrogram_path)
+    plt.imshow(source.frame)
+    plt.show()
 
 
 
 if __name__ == '__main__':
-    #light_frame_to_spectrogram()
+    # light_frame_to_spectrogram()
     # make_undistorted_frame()
-    #make_smiled_frame()
+    # show_me()
+    # make_distorted_frame(['smile'])
+    # make_distorted_frame(['tilt'])
+    # make_distorted_frame(['tilt', 'smile'])
