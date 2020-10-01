@@ -28,7 +28,7 @@ def create_directory(path:str):
         logging.info(f"Successfully created the directory {path}")
 
 
-def save_frame(frame:DataArray, path:str, meta_dict):
+def save_frame(frame:DataArray, path:str, meta_dict=None):
     """Saves a frame to the disk with given name.
 
     File extension '.nc' is added if missing.
@@ -39,15 +39,16 @@ def save_frame(frame:DataArray, path:str, meta_dict):
         A path to a folder to which the frame should be saved.
     frame : DataArray
         The frame to be saved on disk.
-    meta_dict : Dictionary
+    meta_dict : Dictionary, optional
         Dictionary of miscellaneous metadata that gets added to DataSet's attributes.
     """
 
     frameData = xr.Dataset()
     frameData[P.naming_frame_data] = frame
 
-    for key in meta_dict:
-        frameData.attrs[key] = meta_dict[key]
+    if meta_dict is not None:
+        for key in meta_dict:
+            frameData.attrs[key] = meta_dict[key]
 
     path_s = str(path)
     if not path_s.endswith('.nc'):
@@ -81,9 +82,9 @@ def load_frame(path):
     path_s = str(path)
     if not path_s.endswith('.nc'):
         path_s = path_s + '.nc'
-
+    abs_path = os.path.abspath(path_s)
     try:
-        frame_ds = xr.open_dataset(os.path.normpath(path_s))
+        frame_ds = xr.open_dataset(abs_path)
         return frame_ds
     except:
-        logging.error(f"Failed to load frame from '{path_s}'")
+        logging.error(f"Failed to load frame from '{abs_path}'")
