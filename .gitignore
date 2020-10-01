@@ -9,4 +9,7 @@ scans/*
 data/*
 img/*
 
+# Ignore generated examples, but keep the sourse 
+# spectrogram in git
+examples/*
 !examples/fluorescence_spectrogram.nc
