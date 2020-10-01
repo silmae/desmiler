@@ -4,11 +4,9 @@ __pycache__/
 .idea/
 
 # Exclude all saved frames, cubes, and analysis
-desmiler/frames/*
-desmiler/scans/*
-desmiler/data/*
-desmiler/img/*
 frames/*
 scans/*
 data/*
 img/*
+
+!examples/fluorescence_spectrogram.nc
