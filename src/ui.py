@@ -116,6 +116,7 @@ class UI:
             print(f"No session running. Start a session before shooting light frame.")
 
     def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
+        # TODO this might be unnecessary as the idea is to control everything with control files. Remove?
         if self.sc is not None:
             self.sc.crop(width, width_offset, height, height_offset, full)
         else:
@@ -151,7 +152,9 @@ if __name__ == '__main__':
     # ui.shoot_dark()x
     # ui.shoot_white()
     # ui.shoot_light()
+
     ui.start_freeform_session()
-    ui.inspect_light()
+    # ui.inspect_light()
+
     # ui.start_preview()
 
