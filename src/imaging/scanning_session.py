@@ -3,6 +3,20 @@
 Some control over sessions to create metadata and
 correct folder structure.
 
+Order:
+
+    if new session:
+        - generate default control file and close it
+        - copy default camera settings from main directory and close it
+        - both files can now be edited and saved before imaging
+        - load both control files when initializing the camera
+        - shoot (dark, white, light) images and save to session directory
+        - start scanning
+    if existing session:
+        - load control files
+        - load existing dark, white, light frames
+        - start scanning (TODO how to deal with multiple scans in the same session?)
+
 """
 
 import os
@@ -16,14 +30,12 @@ from toml import TomlDecodeError
 
 class ScanningSession:
 
-    # Session log? At least some metadata (datetime, camera settings etc.) should be saved I think.
-
     def __init__(self, session_name:str):
         print(f"Creating session '{session_name}'")
         self.session_name = session_name
         self.session_root = P.path_rel_scan + '/' + session_name
         self.camera_setting_path = self.session_root + '/' + P.camera_settings_file_name
-        self.scan_settings_path = os.path.abspath(self.session_root + '/' + P.scan_settings_file_name)
+        self.scan_settings_path = os.path.abspath(self.session_root + '/' + P.control_file_name)
         self._cami = None
         self.scan_settings = None
 
@@ -37,50 +49,69 @@ class ScanningSession:
         if self.session_exists():
             print(f"Found existing session.")
 
-            self.load_scan_control()
-
             logging.info(f"Searching for existing dark frame from '{self.dark_path}'")
             if os.path.exists(self.dark_path):
-                print(f"Found existing dark frame. Loading into memory")
+                print(f"Found existing dark frame. Loading into memory", end='...')
+                self.dark = F.load_frame(self.dark_path)
+                print("done")
 
             logging.info(f"Searching for existing white frame from '{self.white_path}'")
             if os.path.exists(self.white_path):
-                print(f"Found existing white frame. Loading into memory")
+                print(f"Found existing white frame. Loading into memory", end='...')
+                self.white = F.load_frame(self.white_path)
+                print("done")
 
             logging.info(f"Searching for existing light frame from '{self.light_path}'")
             if os.path.exists(self.light_path):
-                print(f"Found existing light frame. Loading into memory")
+                print(f"Found existing light frame. Loading into memory", end='...')
+                self.light = F.load_frame(self.light_path)
+                print("done")
 
         else:
             F.create_directory(self.session_root)
+            self.generate_default_scan_control()
+
+        self.load_control_file()
 
     def _init_cami(self):
         if self._cami is None:
             self._cami = CameraInterface()
 
-            # load and apply camera settings before scan settings so that
-            # the scanning can be controlled by scan settings toml, which
-            # overwrite the camera settings
-            logging.info(f"Searching for existing camera settings from '{self.camera_setting_path}'")
-            if os.path.exists(self.camera_setting_path):
-                print(f"Found existing camera settings")
-                self._cami.load_camera_settings(self.camera_setting_path)
+    def reload_settings(self):
+        self.load_camera_settings()
 
-            # Load control after camera initialization to override
-            self.load_scan_control()
+    def load_camera_settings(self):
 
-    def load_scan_control(self):
+        if self._cami is None:
+            self._cami = CameraInterface()
 
-        logging.info(f"Searching for existing scan settings from '{self.scan_settings_path}'")
+        # load and apply camera settings before scan settings so that
+        # the scanning can be controlled by scan settings toml, which
+        # overwrite the camera settings
+        logging.info(f"Searching for existing camera settings from '{self.camera_setting_path}'")
+        if os.path.exists(self.camera_setting_path):
+            print(f"Loading camera settings")
+            self._cami.load_camera_settings(self.camera_setting_path)
+            print(f"Camera settings loaded and applied.")
+
+        # Load control after camera initialization to override
+        self.load_control_file()
+
+    def load_control_file(self):
+
+        logging.info(f"Searching for existing scan control file from '{self.scan_settings_path}'")
         if os.path.exists(self.scan_settings_path):
-            print(f"Found existing scan settings")
+            print(f"Loading control file")
             try:
                 with open(self.scan_settings_path, 'r') as file:
                     self.scan_settings = toml.load(file)
                 print(self.scan_settings)
+                print(f"Control file loaded.")
             except TypeError as te:
+                print(f"Control file loading failed")
                 logging.error(te)
             except TomlDecodeError as tde:
+                print(f"Control file loading failed")
                 logging.error(tde)
 
     def session_exists(self) -> bool:
@@ -168,18 +199,26 @@ class ScanningSession:
         else:
             logging.warning(f"Cannot crop session without a camera.")
 
+    def generate_default_scan_control(self, path=None):
+        if path is None:
+            path = self.session_root + '/' + P.control_file_name
+            abs_path = os.path.abspath(path)
+        else:
+            abs_path = os.path.abspath(path + '/' + P.control_file_name)
+
+        if not os.path.exists(abs_path):
+            print(f"Creating default control file to '{abs_path}'", end='')
+            control_toml_s = toml.loads(P.example_scan_control_content)
+
+            with open(abs_path, "w") as file:
+                toml.dump(control_toml_s, file)
+
+            print(f"Default control file created.")
+
 def create_example_scan():
     """Creates an example if does not exist."""
 
-    example_control_path = os.path.abspath(P.path_rel_scan + '/' + P.example_scan_name + '/' + P.scan_settings_file_name)
+    example_sc = ScanningSession(P.example_scan_name)
+    example_sc.generate_default_scan_control()
 
-    if not os.path.exists(example_control_path):
-        print("Creating example scan...", end='')
-        example_sc = ScanningSession(P.example_scan_name)
-        control_toml_s = toml.loads(P.example_scan_control_content)
-
-        with open(example_control_path, "w") as file:
-            toml.dump(control_toml_s, file)
-
-        print(f"done. You can find it in '{example_control_path}'")
 
