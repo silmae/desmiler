@@ -14,6 +14,9 @@ base_path = '../../examples/'
 
 example_spectrogram_path = os.path.abspath(base_path + 'fluorescence_spectrogram.nc')
 undistorted_frame_path = os.path.abspath(base_path + 'undistorted_frame.nc')
+distotion_smile_path = base_path + 'distorted' + '_smile'
+distotion_tilt_path = base_path + 'distorted' + '_tilt'
+distotion_smile_tilt_path = base_path + 'distorted' + '_smile_tilt'
 
 def light_frame_to_spectrogram():
     """Creates a mean spectrogram from few rows of a frame and saves it.
@@ -169,25 +172,47 @@ def make_distorted_frame(distortions):
         distortion_matrix = generate_distortion_matrix(u_frame.x.size, u_frame.y.size, method='tilt')
         u_frame = interpolative_shift(u_frame, distortion_matrix)
         save_path = save_path + '_tilt'
-    if 'noise' in distortions:
-        print(f"Noise generation not implemented yet.")
-        # save_path = save_path + '_noise'
 
     F.save_frame(u_frame, save_path)
     plt.imshow(u_frame)
     plt.show()
 
-def show_me():
-    source = F.load_frame(example_spectrogram_path)
-    plt.imshow(source.frame)
+def show_source_spectrogram():
+    show_me(example_spectrogram_path)
+
+def show_undistorted_frame():
+    show_me(undistorted_frame_path)
+
+def show_smiled_frame():
+    show_me(distotion_smile_path)
+
+def show_tilted_frame():
+    show_me(distotion_tilt_path)
+
+def show_smiled_tilted_frame():
+    show_me(distotion_smile_tilt_path)
+
+def show_me(path):
+    # TODO use frame_inspector instead
+    source = F.load_frame(path)
+    frame = source.frame
+    dim_count = len(frame.dims)
+    if dim_count == 1:
+        plt.plot(frame.data)
+    else:
+        plt.imshow(frame.data)
+
     plt.show()
-
-
 
 if __name__ == '__main__':
     # light_frame_to_spectrogram()
     # make_undistorted_frame()
-    # show_me()
     # make_distorted_frame(['smile'])
     # make_distorted_frame(['tilt'])
-    # make_distorted_frame(['tilt', 'smile'])
+    # make_distorted_frame(['smile', 'tilt'])
+
+    show_source_spectrogram()
+    show_undistorted_frame()
+    show_smiled_frame()
+    show_tilted_frame()
+    show_smiled_tilted_frame()
