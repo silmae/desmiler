@@ -2,6 +2,8 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 
+from utilities import plotting
+
 def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=None, desmiled_bandpass=None, window_name=''):
     """Plot spectrum of a frame from top, middle, and bottom.
 
@@ -45,7 +47,7 @@ def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=No
     
     # always do two columns even if no desmile frame, because subplots() is a bitch
     num = 'bandpass ' + window_name
-    _,ax = plt.subplots(num=num,ncols=2)
+    _,ax = plt.subplots(num=num,ncols=2, figsize=plotting.get_figure_size())
     
     ax[0].set_title("Original")
     ax[0].plot(xData, original_frame.isel(y=int(2*h/3)).values,linewidth=lw,color='c')
@@ -90,9 +92,10 @@ def plot_frame(frame, spectral_lines=None, plot_fit_points=False, plot_circ_fit=
         if needed.    
     """
 
-    fig,ax = plt.subplots(num=window_name)
-    ax.imshow(frame, origin='lower')
-    ax.set_ylim(0,frame.y.size)
+    height = frame.y.size
+
+    _,ax = plt.subplots(num=window_name,nrows=2, figsize=plotting.get_figure_size())
+    ax[0].imshow(frame, origin='lower')
 
     if spectral_lines is not None:
         # Colormap
@@ -102,11 +105,17 @@ def plot_frame(frame, spectral_lines=None, plot_fit_points=False, plot_circ_fit=
             # Change color for every circle
             color = cmap(1 / (i+1) )
             if plot_circ_fit:
-                ax.add_artist(plt.Circle((sl.circ_cntr_x, sl.circ_cntr_y), sl.circ_r, color=color, fill=False))
+                ax[0].add_artist(plt.Circle((sl.circ_cntr_x, sl.circ_cntr_y), sl.circ_r, color=color, fill=False))
             if plot_fit_points:
-                ax.plot(sl.x,sl.y,'.',linewidth=1,color=color)
+                ax[0].plot(sl.x,sl.y,'.',linewidth=1,color=color)
             if plot_line_fit:
                 liny = sl.line_a*sl.x+sl.line_b
-                ax.plot(sl.x, liny, linewidth=1,color=color)
+                ax[0].plot(sl.x, liny, linewidth=1,color=color)
+
+    ### Spectrogram
+    row_selection = np.linspace(height * 0.1, height * 0.9, num=3, dtype=np.int)
+    rows = frame.isel({'y':row_selection}).values
+    rows = rows.transpose()
+    ax[1].plot(rows)
 
     plt.show()
