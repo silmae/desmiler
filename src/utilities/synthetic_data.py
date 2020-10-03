@@ -185,18 +185,18 @@ def show_source_spectrogram():
     show_me(example_spectrogram_path)
 
 def show_undistorted_frame():
-    show_me(undistorted_frame_path)
+    show_me(undistorted_frame_path, window_name='Undistorted')
 
 def show_smiled_frame():
-    show_me(distotion_smile_path)
+    show_me(distotion_smile_path, window_name='Distortions: smile')
 
 def show_tilted_frame():
-    show_me(distotion_tilt_path)
+    show_me(distotion_tilt_path, window_name='Distortions: tilt')
 
 def show_smiled_tilted_frame():
-    show_me(distotion_smile_tilt_path)
+    show_me(distotion_smile_tilt_path, window_name='Distortions: smile + tilt')
 
-def show_me(path):
+def show_me(path, window_name):
     # TODO use frame_inspector instead
     source = F.load_frame(path)
     frame = source.frame
@@ -204,7 +204,7 @@ def show_me(path):
     if dim_count == 1:
         plt.plot(frame.data)
     else:
-        plt.imshow(frame.data)
+        frame_inspector.plot_frame(frame, window_name=window_name)
 
     plt.show()
 
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     # make_distorted_frame(['smile', 'tilt'])
 
     # show_source_spectrogram()
-    # show_undistorted_frame()
+    show_undistorted_frame()
     show_smiled_frame()
     show_tilted_frame()
     show_smiled_tilted_frame()
