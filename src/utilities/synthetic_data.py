@@ -94,7 +94,7 @@ def load_undistorted_frame():
 def generate_distortion_matrix(width, height, method='smile'):
     """This is the inverse of what would be used to correct a smile effect.
 
-    TODO Should probably move to somplace else.
+    TODO Should probably move to someplace else.
     """
 
     # height = len(output_array[:, 0])
@@ -103,9 +103,12 @@ def generate_distortion_matrix(width, height, method='smile'):
     distortion_matrix = np.zeros((height,width))
 
     if method == 'smile':
-        circle_center_x = -15000
-        circle_center_y = 400
-        circle_r = abs(circle_center_x)
+        curvature = 30e-6
+        circle_r = 1 / curvature
+        # 1 curves left and -1 curves right
+        curving_direction = -1
+        circle_center_x = ((width / 2) + circle_r) * curving_direction
+        circle_center_y = int(height/2)
 
         for y in range(height-1):
             yy = y - circle_center_y
@@ -115,7 +118,8 @@ def generate_distortion_matrix(width, height, method='smile'):
             for x in range(width-1):
                 distortion_matrix[y, x] = px
     if method == 'tilt':
-        max_tilt = 10
+        tilt_deg = 1
+        max_tilt = math.sin(math.radians(tilt_deg)) * height
         col = np.linspace(-int(max_tilt/2),int(max_tilt/2),num=height)
         distortion_matrix = np.repeat(col, width)
         distortion_matrix = np.reshape(distortion_matrix, (height, width))
@@ -197,7 +201,6 @@ def show_smiled_tilted_frame():
     show_me(distotion_smile_tilt_path, window_name='Distortions: smile + tilt')
 
 def show_me(path, window_name):
-    # TODO use frame_inspector instead
     source = F.load_frame(path)
     frame = source.frame
     dim_count = len(frame.dims)
@@ -215,8 +218,8 @@ if __name__ == '__main__':
     # make_distorted_frame(['tilt'])
     # make_distorted_frame(['smile', 'tilt'])
 
-    # show_source_spectrogram()
-    show_undistorted_frame()
-    show_smiled_frame()
-    show_tilted_frame()
-    show_smiled_tilted_frame()
+    show_source_spectrogram()
+    # show_undistorted_frame()
+    # show_smiled_frame()
+    # show_tilted_frame()
+    # show_smiled_tilted_frame()
