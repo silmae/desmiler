@@ -84,7 +84,8 @@ def load_frame(path):
         path_s = path_s + '.nc'
     abs_path = os.path.abspath(path_s)
     try:
-        frame_ds = xr.open_dataset(abs_path, autoclose=True)
+        frame_ds = xr.open_dataset(abs_path)
+        frame_ds.close()
         return frame_ds
     except:
         logging.error(f"Failed to load frame from '{abs_path}'")
