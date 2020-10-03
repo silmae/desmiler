@@ -18,6 +18,11 @@ distotion_smile_path = base_path + 'distorted' + '_smile'
 distotion_tilt_path = base_path + 'distorted' + '_tilt'
 distotion_smile_tilt_path = base_path + 'distorted' + '_smile_tilt'
 
+# Height of the sensor
+frame_height = 2704
+# Height of the effective area that the slit can illuminate
+slit_height = 800
+
 def light_frame_to_spectrogram():
     """Creates a mean spectrogram from few rows of a frame and saves it.
 
@@ -48,7 +53,7 @@ def make_undistorted_frame():
 
     print(f"Generating frame example to '{undistorted_frame_path}'...", end='')
     source = F.load_frame(example_spectrogram_path)
-    height = 800
+    height = slit_height
     width = source.frame.x.size
     source_data = source.frame.data
     max_pixel_val = source_data.max()
@@ -58,23 +63,28 @@ def make_undistorted_frame():
     expanded_data = expanded_data.transpose()
     # print(expanded_data.shape)
 
+    full_sensor = np.zeros((frame_height, width))
+    fh2 = int(frame_height/2)
+    sh2 = int(slit_height/2)
+    full_sensor[fh2-sh2:fh2+sh2,:] = expanded_data
+
     # Multiply each row with a random number
-    # rand_row = np.random.uniform(1, 1.10, size=(height,))
-    rand_row = np.random.normal(1, 0.03, size=(height,))
-    expanded_data = expanded_data * rand_row[:,None]
+    # rand_row = np.random.uniform(1, 1.10, size=(frame_height,))
+    rand_row = np.random.normal(1, 0.03, size=(frame_height,))
+    full_sensor = full_sensor * rand_row[:,None]
 
     # Add random noise
-    rando = np.random.uniform(0, 0.05*max_pixel_val, size=(height, width))
-    expanded_data = expanded_data + rando
+    rando = np.random.uniform(0, 0.05*max_pixel_val, size=(frame_height, width))
+    full_sensor = full_sensor + rando
 
     coords = {
         "x": ("x", np.arange(0, source.frame.x.size) + 0.5),
-        "y": ("y", np.arange(0, height) + 0.5),
+        "y": ("y", np.arange(0, frame_height) + 0.5),
         "timestamp": dt.datetime.today().timestamp(),
     }
     dims = ('y', 'x')
     frame = xr.DataArray(
-        expanded_data,
+        full_sensor,
         name="frame",
         dims=dims,
         coords=coords,
@@ -118,7 +128,7 @@ def generate_distortion_matrix(width, height, method='smile'):
             for x in range(width-1):
                 distortion_matrix[y, x] = px
     if method == 'tilt':
-        tilt_deg = 1
+        tilt_deg = -1
         max_tilt = math.sin(math.radians(tilt_deg)) * height
         col = np.linspace(-int(max_tilt/2),int(max_tilt/2),num=height)
         distortion_matrix = np.repeat(col, width)
@@ -182,8 +192,8 @@ def make_distorted_frame(distortions):
         save_path = save_path + '_tilt'
 
     F.save_frame(u_frame, save_path)
-    plt.imshow(u_frame)
-    plt.show()
+    # plt.imshow(u_frame)
+    # plt.show()
 
 def show_source_spectrogram():
     show_me(example_spectrogram_path)
@@ -200,7 +210,7 @@ def show_tilted_frame():
 def show_smiled_tilted_frame():
     show_me(distotion_smile_tilt_path, window_name='Distortions: smile + tilt')
 
-def show_me(path, window_name):
+def show_me(path, window_name=None):
     source = F.load_frame(path)
     frame = source.frame
     dim_count = len(frame.dims)
@@ -219,7 +229,7 @@ if __name__ == '__main__':
     # make_distorted_frame(['smile', 'tilt'])
 
     show_source_spectrogram()
-    # show_undistorted_frame()
-    # show_smiled_frame()
-    # show_tilted_frame()
-    # show_smiled_tilted_frame()
+    show_undistorted_frame()
+    show_smiled_frame()
+    show_tilted_frame()
+    show_smiled_tilted_frame()
