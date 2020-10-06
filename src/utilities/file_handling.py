@@ -4,6 +4,7 @@ import logging
 from core import properties as P
 import xarray as xr
 from xarray import DataArray
+from xarray import Dataset
 
 import toml
 from toml import TomlDecodeError
@@ -31,17 +32,21 @@ def create_directory(path:str):
         logging.info(f"Successfully created the directory {path}")
 
 
-def save_frame(frame:DataArray, path:str, meta_dict=None):
+def save_frame(frame:DataArray, path, meta_dict=None):
     """Saves a frame to the disk with given name.
+
+    NOTE: even if the frame is expected to be a DataArray object,
+    the saved file will be a Dataset object and the name of the
+    frame is defined in core.properties.py file as 'naming_frame_data'.
 
     File extension '.nc' is added if missing.
 
     Parameters
     ----------
-    path : string or path
-        A path to a folder to which the frame should be saved.
     frame : DataArray
         The frame to be saved on disk.
+    path : string or path
+        A path to the file.
     meta_dict : Dictionary, optional
         Dictionary of miscellaneous metadata that gets added to DataSet's attributes.
     """
@@ -52,22 +57,27 @@ def save_frame(frame:DataArray, path:str, meta_dict=None):
     if meta_dict is not None:
         for key in meta_dict:
             frameData.attrs[key] = meta_dict[key]
-
     path_s = str(path)
     if not path_s.endswith('.nc'):
         path_s = path_s + '.nc'
 
-    # FIXME This fails if the file is already open.
-    frameData.to_netcdf(os.path.normpath(path_s), format='NETCDF4')
+    abs_path = os.path.abspath(path_s)
+
+    try:
+        frameData.to_netcdf(abs_path, format='NETCDF4')
+    except:
+        logging.error(f"Failed to save frame to '{abs_path}'")
+    finally:
+        frameData.close()
 
 
-def load_frame(path):
-    """Loads a frame with given name from the disk.
+def load_frame(path) -> Dataset:
+    """Loads a frame from given path.
 
     Parameters
     ----------
-    fileName : string
-        The name of the Dataset to be loaded for example 'magic'.
+    path : string or path object
+        The name of the Dataset to be loaded.
         The '.nc' file ending is added to the name.
 
     Returns
@@ -75,11 +85,6 @@ def load_frame(path):
     DataArray
         Now, we actually load a Xarray Dataset, but return its 'frame' attribute.
         Don't know if this is a good practise or not.
-
-    Raises
-    ------
-    FIXME Xarray load exception are left unhandeled. Will fail if the file
-    is already opened.
     """
 
     path_s = str(path)
@@ -88,15 +93,29 @@ def load_frame(path):
     abs_path = os.path.abspath(path_s)
     try:
         frame_ds = xr.open_dataset(abs_path)
-        frame_ds.close()
         return frame_ds
     except:
         logging.error(f"Failed to load frame from '{abs_path}'")
+    finally:
+        frame_ds.close()
 
 
 def load_control_file(path):
+    """Loads a control file (.toml) from given path.
 
-    abs_path = os.path.abspath(path)
+    File extension .toml added if omitted.
+
+    Returns
+    -------
+    control
+        Contents of the control file as dictionary.
+    """
+
+    path_s = str(path)
+    if not path_s.endswith('.toml'):
+        path_s = path_s + '.toml'
+    abs_path = os.path.abspath(path_s)
+
     logging.info(f"Searching for existing scan control file from '{abs_path}'")
     if os.path.exists(abs_path):
         print(f"Loading control file")
@@ -114,3 +133,30 @@ def load_control_file(path):
             logging.error(tde)
     else:
         logging.warning("Control file not found.")
+
+def save_shift_matrix(shift_matrix:DataArray, path):
+    path_s = str(path)
+    if not path_s.endswith('.nc'):
+        path_s = path_s + '.nc'
+    abs_path = os.path.abspath(path_s)
+
+    try:
+        shift_matrix.to_netcdf(os.path.normpath(abs_path))
+    except:
+        logging.error(f"Failed to save shift matrix to '{abs_path}'")
+    finally:
+        shift_matrix.close()
+
+def load_shit_matrix(path) -> DataArray:
+    path_s = str(path)
+    if not path_s.endswith('.nc'):
+        path_s = path_s + '.nc'
+    abs_path = os.path.abspath(path_s)
+    try:
+        shift_matrix = xr.open_dataarray(abs_path)
+        return shift_matrix
+    except:
+        logging.error(f"Failed to load shift matrix from '{abs_path}'")
+    finally:
+        shift_matrix.close()
+
