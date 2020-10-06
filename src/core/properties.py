@@ -29,14 +29,15 @@ example_scan_control_content =\
 """
 [scan_settings]
 	scanning_speed = 0.2
-	width 			= 20001
-	width_offset 	= 0
-	height			= 1200
-	height_offset	= 400
+	width 			= 2500
+	width_offset 	= 500
+	height			= 760
+	height_offset	= 975
 
 [spectral_lines]
-	positions 		= [50, 100, 183]
+    # x-coordinates in full sensor coordinates (not cropped ones). 
+	positions 		= [1130, 1260, 1480, 2020]
 	wavelengths 	= [327, 380, 521]
 	window_width 	= 25
-	peak_width 		= 3
+	peak_width 		= 5
 """

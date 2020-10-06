@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 import datetime as dt
+import toml
 import math
 import analysis.frame_inspector as frame_inspector
+from core import smile_correction as sc
 
 base_path = '../../examples/'
 
@@ -17,6 +19,7 @@ undistorted_frame_path = os.path.abspath(base_path + 'undistorted_frame.nc')
 distotion_smile_path = base_path + 'distorted' + '_smile'
 distotion_tilt_path = base_path + 'distorted' + '_tilt'
 distotion_smile_tilt_path = base_path + 'distorted' + '_smile_tilt'
+shift_path = base_path + 'shift.nc'
 
 # Height of the sensor
 frame_height = 2704
@@ -195,6 +198,44 @@ def make_distorted_frame(distortions):
     # plt.imshow(u_frame)
     # plt.show()
 
+
+def make_shift_matrix():
+    """Make shift matrix and save it to disk.
+
+    If there does not exist a file './scan_name/scan_name_shift.nc', this method
+    has to be called to create one. The shift matrix is valid for all cubes
+    imaged with same settings (hardware and software).
+    """
+
+    control = toml.loads(P.example_scan_control_content)
+    width = control['scan_settings']['width']
+    width_offset = control['scan_settings']['width_offset']
+    height = control['scan_settings']['height']
+    height_offset = control['scan_settings']['height_offset']
+
+    positions = np.array(control['spectral_lines']['positions']) - width_offset
+    peak_width = control['spectral_lines']['peak_width']
+    bandpass_width = control['spectral_lines']['window_width']
+
+
+    load_path = distotion_smile_tilt_path
+    light_ds = F.load_frame(load_path)
+    light_ds = light_ds.isel({'x':slice(width_offset, width_offset + width),
+                              'y':slice(height_offset, height_offset + height)})
+    light_frame = light_ds.frame
+    bp = sc.construct_bandpass_filter(light_frame, positions, bandpass_width)
+    sl_list = sc.construct_spectral_lines(light_frame, positions, bp)
+    shift_matrix = sc.construct_shift_matrix(sl_list, light_frame.x.size, light_frame.y.size)
+    frame_inspector.plot_frame(light_frame, sl_list, True, True, False, 'testing')
+
+    print(f"Saving shift matrix to {shift_path}...", end=' ')
+    shift_matrix.to_netcdf(os.path.normpath(shift_path))
+    print("done")
+    # Uncomment for debugging
+    shift_matrix.plot.imshow()
+    plt.show()
+    return shift_matrix
+
 def show_source_spectrogram():
     show_me(example_spectrogram_path)
 
@@ -228,8 +269,10 @@ if __name__ == '__main__':
     # make_distorted_frame(['tilt'])
     # make_distorted_frame(['smile', 'tilt'])
 
-    show_source_spectrogram()
-    show_undistorted_frame()
-    show_smiled_frame()
-    show_tilted_frame()
-    show_smiled_tilted_frame()
+    # show_source_spectrogram()
+    # show_undistorted_frame()
+    # show_smiled_frame()
+    # show_tilted_frame()
+    # show_smiled_tilted_frame()
+
+    make_shift_matrix()
