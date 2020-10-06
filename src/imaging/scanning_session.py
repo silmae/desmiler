@@ -26,7 +26,6 @@ from utilities import file_handling as F
 from core.camera_interface import CameraInterface
 import logging
 import toml
-from toml import TomlDecodeError
 
 class ScanningSession:
 
@@ -69,9 +68,12 @@ class ScanningSession:
 
         else:
             F.create_directory(self.session_root)
-            self.generate_default_scan_control()
+            self.generate_default_scan_control(self.session_root)
 
         self.load_control_file()
+
+    def __del__(self):
+        self.close()
 
     def _init_cami(self):
         if self._cami is None:
@@ -98,21 +100,7 @@ class ScanningSession:
         self.load_control_file()
 
     def load_control_file(self):
-
-        logging.info(f"Searching for existing scan control file from '{self.scan_settings_path}'")
-        if os.path.exists(self.scan_settings_path):
-            print(f"Loading control file")
-            try:
-                with open(self.scan_settings_path, 'r') as file:
-                    self.scan_settings = toml.load(file)
-                print(self.scan_settings)
-                print(f"Control file loaded.")
-            except TypeError as te:
-                print(f"Control file loading failed")
-                logging.error(te)
-            except TomlDecodeError as tde:
-                print(f"Control file loading failed")
-                logging.error(tde)
+        self.scan_settings = F.load_control_file(self.scan_settings_path)
 
     def session_exists(self) -> bool:
         if os.path.exists(self.session_root):
