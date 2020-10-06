@@ -91,6 +91,8 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass, pea
             be further that filter_window_width away from each other.
         bandpass : (array-like, array-like)
             A bandpass filter as provided by construct_bandpass_filter() method.
+        peak_width
+            Peak width passed to signal.find_peaks()
     
     Returns
     -------
@@ -159,7 +161,7 @@ def construct_shift_matrix(spectral_lines, w, h):
         shift_matrix = _single_circle_shift(shift_matrix, spectral_lines, w)
     else:
         shift_matrix = _multi_circle_shift(shift_matrix, spectral_lines, w)
-    # TODO check data type of above are correct
+
     return shift_matrix
 
 def _single_circle_shift(shift_matrix, spectral_lines, w):
