@@ -5,6 +5,9 @@ from core import properties as P
 import xarray as xr
 from xarray import DataArray
 
+import toml
+from toml import TomlDecodeError
+
 
 def create_default_directories():
     """Creates default structure if it does not exist yet."""
@@ -89,3 +92,25 @@ def load_frame(path):
         return frame_ds
     except:
         logging.error(f"Failed to load frame from '{abs_path}'")
+
+
+def load_control_file(path):
+
+    abs_path = os.path.abspath(path)
+    logging.info(f"Searching for existing scan control file from '{abs_path}'")
+    if os.path.exists(abs_path):
+        print(f"Loading control file")
+        try:
+            with open(abs_path, 'r') as file:
+                scan_settings = toml.load(file)
+            print(scan_settings)
+            print(f"Control file loaded.")
+            return scan_settings
+        except TypeError as te:
+            print(f"Control file loading failed")
+            logging.error(te)
+        except TomlDecodeError as tde:
+            print(f"Control file loading failed")
+            logging.error(tde)
+    else:
+        logging.warning("Control file not found.")
