@@ -20,6 +20,8 @@ distotion_smile_path = base_path + 'distorted' + '_smile'
 distotion_tilt_path = base_path + 'distorted' + '_tilt'
 distotion_smile_tilt_path = base_path + 'distorted' + '_smile_tilt'
 shift_path = base_path + 'shift.nc'
+desmile_lut_path = base_path + 'desmiled_lut.nc'
+desmile_intr_path = base_path + 'desmiled_intr.nc'
 
 # Height of the sensor
 frame_height = 2704
@@ -276,6 +278,12 @@ def show_tilted_frame():
 def show_smiled_tilted_frame():
     show_me(distotion_smile_tilt_path, window_name='Distortions: smile + tilt')
 
+def show_desmiled_lut():
+    show_me(desmile_lut_path, window_name='Desmiled with LUT')
+
+def show_desmiled_intr():
+    show_me(desmile_intr_path, window_name='Desmiled with INTR')
+
 def show_me(path, window_name=None):
     source = F.load_frame(path)
     frame = source.frame
@@ -294,17 +302,22 @@ if __name__ == '__main__':
     # make_distorted_frame(['tilt'])
     # make_distorted_frame(['smile', 'tilt'])
 
-    # show_source_spectrogram()
-    # show_undistorted_frame()
-    # show_smiled_frame()
-    # show_tilted_frame()
-    # show_smiled_tilted_frame()
+    show_source_spectrogram()
+    show_undistorted_frame()
+    show_smiled_frame()
+    show_tilted_frame()
+    show_smiled_tilted_frame()
+    show_desmiled_lut()
+    show_desmiled_intr()
 
     # make_shift_matrix()
-    sm = F.load_shit_matrix(shift_path)
+
+    # sm = F.load_shit_matrix(shift_path)
     # sm.plot.imshow()
     # plt.show()
-    lut_frame = apply_frame_correction(sm, 0)
-    frame_inspector.plot_frame(lut_frame, window_name='lut_frame')
-    intr_frame = apply_frame_correction(sm, 1)
-    frame_inspector.plot_frame(intr_frame, window_name='intr_frame')
+    # lut_frame = apply_frame_correction(sm, 0)
+    # F.save_frame(lut_frame, desmile_lut_path)
+    # frame_inspector.plot_frame(lut_frame, window_name='lut_frame')
+    # intr_frame = apply_frame_correction(sm, 1)
+    # F.save_frame(intr_frame, desmile_intr_path)
+    # frame_inspector.plot_frame(intr_frame, window_name='intr_frame')
