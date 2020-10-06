@@ -232,9 +232,34 @@ def make_shift_matrix():
     shift_matrix.to_netcdf(os.path.normpath(shift_path))
     print("done")
     # Uncomment for debugging
-    shift_matrix.plot.imshow()
-    plt.show()
+    # shift_matrix.plot.imshow()
+    # plt.show()
     return shift_matrix
+
+def apply_frame_correction(shift_matrix, method):
+    control = toml.loads(P.example_scan_control_content)
+    width = control['scan_settings']['width']
+    width_offset = control['scan_settings']['width_offset']
+    height = control['scan_settings']['height']
+    height_offset = control['scan_settings']['height_offset']
+
+    positions = np.array(control['spectral_lines']['positions']) - width_offset
+    peak_width = control['spectral_lines']['peak_width']
+    bandpass_width = control['spectral_lines']['window_width']
+
+    light_ds = F.load_frame(distotion_smile_tilt_path)
+    light_ds = light_ds.isel({'x': slice(width_offset, width_offset + width),
+                              'y': slice(height_offset, height_offset + height)})
+
+    # light_ds = light_ds.reindex({'x': np.arange(0, light_ds.x.size) + 0.5,
+    #                              'y': np.arange(0, light_ds.y.size) + 0.5})
+
+    light_frame = light_ds.frame
+    corrected = sc.apply_shift_matrix(light_frame, shift_matrix=shift_matrix, method=method, target_is_cube=False)
+    # Uncomment for debugging
+    # corrected.plot.imshow()
+    # plt.show()
+    return corrected
 
 def show_source_spectrogram():
     show_me(example_spectrogram_path)
@@ -275,4 +300,11 @@ if __name__ == '__main__':
     # show_tilted_frame()
     # show_smiled_tilted_frame()
 
-    make_shift_matrix()
+    # make_shift_matrix()
+    sm = F.load_shit_matrix(shift_path)
+    # sm.plot.imshow()
+    # plt.show()
+    lut_frame = apply_frame_correction(sm, 0)
+    frame_inspector.plot_frame(lut_frame, window_name='lut_frame')
+    intr_frame = apply_frame_correction(sm, 1)
+    frame_inspector.plot_frame(intr_frame, window_name='intr_frame')
