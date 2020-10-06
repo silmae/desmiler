@@ -1,5 +1,5 @@
 """
-This file contains the core functionality of the desmiling process, i.e., 
+This file contains the core functionality of the smile correction process, i.e.,
 bandpass filter construction, SL construction, shift matrix construction and 
 application.
 
@@ -73,7 +73,7 @@ def construct_bandpass_filter(peak_light_frame, location_estimates, filter_windo
 
     return low,high
 
-def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
+def construct_spectral_lines(peak_light_frame, location_estimates, bandpass, peak_width=3):
     """ Constructs spectral lines found from given frame. 
 
     Spectral lines are expected to be found from location_estimates, which should be 
@@ -99,9 +99,6 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
 
     """
 
-    # Hard coded peak height for the peak finding algorithm.
-    peakWidth = 3
-    
     rowList = []
     accepted_row_index = []
     spectral_line_list = []
@@ -110,7 +107,7 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
     for i in range(peak_light_frame.y.size):
 
         row = peak_light_frame.isel(y=i).values
-        rowPeaks, _ = signal.find_peaks(row, height=bandpass, width=peakWidth)
+        rowPeaks, _ = signal.find_peaks(row, height=bandpass, width=peak_width)
 
         if len(rowPeaks) == len(location_estimates):
             accepted_row_index.append(i)
@@ -135,12 +132,12 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass):
 
 
 def construct_shift_matrix(spectral_lines, w, h):
-    """Constructs a desmiling shift distance matrix.
+    """Constructs a shift (distance) matrix for smile correction.
 
     Parameters
     ----------
 
-    spectralLines : list SpectralLine
+    spectral_lines : list SpectralLine
         A list of spectral lines to base the desmiling on.
         Use construct_spectral_lines() to acquire them.
     w: int
@@ -162,7 +159,7 @@ def construct_shift_matrix(spectral_lines, w, h):
         shift_matrix = _single_circle_shift(shift_matrix, spectral_lines, w)
     else:
         shift_matrix = _multi_circle_shift(shift_matrix, spectral_lines, w)
-
+    # TODO check data type of above are correct
     return shift_matrix
 
 def _single_circle_shift(shift_matrix, spectral_lines, w):
