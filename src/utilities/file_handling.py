@@ -65,8 +65,6 @@ def save_frame(frame:DataArray, path, meta_dict=None):
 
     try:
         frameData.to_netcdf(abs_path, format='NETCDF4')
-    except:
-        logging.error(f"Failed to save frame to '{abs_path}'")
     finally:
         frameData.close()
 
@@ -94,8 +92,6 @@ def load_frame(path) -> Dataset:
     try:
         frame_ds = xr.open_dataset(abs_path)
         return frame_ds
-    except:
-        logging.error(f"Failed to load frame from '{abs_path}'")
     finally:
         frame_ds.close()
 
@@ -106,12 +102,8 @@ def save_cube(cube:Dataset, path):
         path_s = path_s + '.nc'
     abs_path = os.path.abspath(path_s)
 
-    try:
-        cube.to_netcdf(abs_path, format='NETCDF4', engine='netcdf4')
-    except:
-        logging.error(f"Failed to save cube to '{abs_path}'")
-    finally:
-        cube.close()
+    cube.to_netcdf(abs_path)
+    cube.close()
 
 
 def load_cube(path):
@@ -125,8 +117,6 @@ def load_cube(path):
     try:
         cube_ds = xr.open_dataset(abs_path)
         return cube_ds
-    except:
-        logging.error(f"Failed to load cube from '{abs_path}'")
     finally:
         cube_ds.close()
 
@@ -173,8 +163,6 @@ def save_shift_matrix(shift_matrix:DataArray, path):
 
     try:
         shift_matrix.to_netcdf(os.path.normpath(abs_path))
-    except:
-        logging.error(f"Failed to save shift matrix to '{abs_path}'")
     finally:
         shift_matrix.close()
 
@@ -186,8 +174,6 @@ def load_shit_matrix(path) -> DataArray:
     try:
         shift_matrix = xr.open_dataarray(abs_path)
         return shift_matrix
-    except:
-        logging.error(f"Failed to load shift matrix from '{abs_path}'")
     finally:
         shift_matrix.close()
 
