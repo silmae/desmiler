@@ -68,9 +68,11 @@ class ScanningSession:
 
         else:
             F.create_directory(self.session_root)
-            self.generate_default_scan_control(self.session_root)
 
-        self.load_control_file()
+        if not os.path.exists(self.scan_settings_path):
+            self.generate_default_scan_control()
+        else:
+            self.load_control_file()
 
     def __del__(self):
         self.close()
