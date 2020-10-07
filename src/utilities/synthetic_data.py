@@ -227,21 +227,20 @@ def make_stripe_cube():
             use_white = not use_white
             stripe_counter = 0
         if use_white:
-            f = white_area_frame
+            f = white_area_frame.frame
         else:
-            f = dark_area_frame
+            f = dark_area_frame.frame
 
-        f.coords['scan_index'] = i
+        f.coords[P.dim_scan] = i
         frame_list.append(f)
         stripe_counter += 1
 
-    cube = xr.concat(frame_list, dim='scan_index')
-    # TODO this would make it look like the old data struct
-    # cube = xr.Dataset(
-    #     data_vars={
-    #         'dn': frames,
-    #     },
-    # )
+    frames = xr.concat(frame_list, dim=P.dim_scan)
+    cube = xr.Dataset(
+        data_vars={
+            'dn': frames,
+        },
+    )
     F.save_cube(cube, '../' + P.path_rel_scan + '/' + P.example_scan_name + '/' + P.example_scan_name + '_cube')
 
 def make_shift_matrix():
@@ -354,12 +353,12 @@ if __name__ == '__main__':
     # intr_frame = apply_frame_correction(sm, 1)
     # F.save_frame(intr_frame, desmile_intr_path)
 
-    show_source_spectrogram()
-    show_undistorted_frame()
-    show_smiled_frame()
-    show_tilted_frame()
-    show_smiled_tilted_frame()
-    show_desmiled_lut()
-    show_desmiled_intr()
+    # show_source_spectrogram()
+    # show_undistorted_frame()
+    # show_smiled_frame()
+    # show_tilted_frame()
+    # show_smiled_tilted_frame()
+    # show_desmiled_lut()
+    # show_desmiled_intr()
 
-    # make_stripe_cube()
+    make_stripe_cube()

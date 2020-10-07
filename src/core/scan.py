@@ -49,11 +49,12 @@ import xarray as xr
 import os
 
 from core import smile_correction as smile
+import core.properties as P
 
 # Expected dimension names of the spectral cube.
-d_along_scan   = 'index'
-d_across_scan  = 'y'
-d_spectral     = 'x'
+d_along_scan   = P.dim_scan
+d_across_scan  = P.dim_y
+d_spectral     = P.dim_x
 
 # Under what name the data is in the cube. 
 cube_data_name = 'dn'

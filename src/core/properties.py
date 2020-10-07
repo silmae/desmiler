@@ -28,6 +28,15 @@ dwl_default_method = 'mean'
 # A single frame dataset uses this name to save the frame.
 naming_frame_data = 'frame'
 
+########### Dimension names #############
+# Not iplemented everywhere
+
+dim_x = 'x'
+dim_y = 'y'
+dim_scan = 'scan_index'
+
+########### Example related #############
+
 example_scan_name = 'example_scan'
 example_scan_control_content =\
 """
