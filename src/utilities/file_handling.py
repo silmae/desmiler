@@ -99,6 +99,37 @@ def load_frame(path) -> Dataset:
     finally:
         frame_ds.close()
 
+def save_cube(cube:Dataset, path):
+
+    path_s = str(path)
+    if not path_s.endswith('.nc'):
+        path_s = path_s + '.nc'
+    abs_path = os.path.abspath(path_s)
+
+    try:
+        cube.to_netcdf(abs_path, format='NETCDF4', engine='netcdf4')
+    except:
+        logging.error(f"Failed to save cube to '{abs_path}'")
+    finally:
+        cube.close()
+
+
+def load_cube(path):
+    """ Loads and returns a cube. Closes file handle once done."""
+
+    path_s = str(path)
+    if not path_s.endswith('.nc'):
+        path_s = path_s + '.nc'
+    abs_path = os.path.abspath(path_s)
+
+    try:
+        cube_ds = xr.open_dataset(abs_path)
+        return cube_ds
+    except:
+        logging.error(f"Failed to load cube from '{abs_path}'")
+    finally:
+        cube_ds.close()
+
 
 def load_control_file(path):
     """Loads a control file (.toml) from given path.
