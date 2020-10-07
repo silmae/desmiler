@@ -16,8 +16,6 @@ def create_default_directories():
     print("Checking whether default directories exist. Creating if not.")
     if not os.path.exists(P.path_rel_scan):
         create_directory(P.path_rel_scan)
-    if not os.path.exists(P.frame_folder_name):
-        create_directory(P.frame_folder_name)
 
 
 def create_directory(path:str):

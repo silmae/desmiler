@@ -2,17 +2,21 @@
 
 """
 
-path_rel_scan = '../scans'
-frame_folder_name = '../frames'
+path_project_root = '../'
+path_rel_scan = path_project_root + 'scans/'
 
-camera_settings_file_name = 'camera_settings.toml'
-control_file_name = 'control.toml'
+path_rel_default_cam_settings = path_project_root + 'camera_settings.toml'
 
-extension_dark = 'dark'
-extension_white = 'white'
-extension_light = 'light'
+extension_camera_settings = '.toml'
+extension_control = '.toml'
+extension_data_format = '.nc'
 
-path_rel_default_cam_settings = '../camera_settings.toml'
+fn_camera_settings = 'camera_settings' + extension_camera_settings
+fn_control = 'control' + extension_control
+
+ref_dark_name = 'dark'
+ref_white_name = 'white'
+ref_light_name = 'light'
 
 freeform_session_name = 'freeform'
 

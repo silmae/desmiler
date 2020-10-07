@@ -33,14 +33,14 @@ class ScanningSession:
         print(f"Creating session '{session_name}'")
         self.session_name = session_name
         self.session_root = P.path_rel_scan + '/' + session_name
-        self.camera_setting_path = self.session_root + '/' + P.camera_settings_file_name
-        self.scan_settings_path = os.path.abspath(self.session_root + '/' + P.control_file_name)
+        self.camera_setting_path = self.session_root + '/' + P.fn_camera_settings
+        self.scan_settings_path = os.path.abspath(self.session_root + '/' + P.fn_control)
         self._cami = None
         self.scan_settings = None
 
-        self.dark_path  = os.path.abspath(self.session_root + '/' + P.extension_dark + '.nc')
-        self.white_path = os.path.abspath(self.session_root + '/' + P.extension_white + '.nc')
-        self.light_path = os.path.abspath(self.session_root + '/' + P.extension_light + '.nc')
+        self.dark_path  = os.path.abspath(self.session_root + '/' + P.ref_dark_name + '.nc')
+        self.white_path = os.path.abspath(self.session_root + '/' + P.ref_white_name + '.nc')
+        self.light_path = os.path.abspath(self.session_root + '/' + P.ref_light_name + '.nc')
         self.dark = None
         self.white = None
         self.light = None
@@ -123,7 +123,7 @@ class ScanningSession:
         resumed after acquisition.
         """
 
-        self._shoot_reference(P.extension_dark)
+        self._shoot_reference(P.ref_dark_name)
 
     def shoot_white(self):
         """Shoots and saves a white frame.
@@ -132,7 +132,7 @@ class ScanningSession:
         resumed after acquisition.
         """
 
-        self._shoot_reference(P.extension_white)
+        self._shoot_reference(P.ref_white_name)
 
     def shoot_light(self):
         """Shoots and saves a peaky light frame.
@@ -141,11 +141,11 @@ class ScanningSession:
         resumed after acquisition.
         """
 
-        self._shoot_reference(P.extension_light)
+        self._shoot_reference(P.ref_light_name)
 
     def _shoot_reference(self, ref_type:str):
         self._init_cami()
-        if ref_type in (P.extension_dark, P.extension_white, P.extension_light):
+        if ref_type in (P.ref_dark_name, P.ref_white_name, P.ref_light_name):
             logging.debug(f"Crop before starting to shoot {ref_type}:\n {self._cami.get_crop_meta_dict()}")
             old, _ = self._cami.crop(full=True)
             logging.debug(f"New crop:\n {self._cami.get_crop_meta_dict()}")
@@ -153,11 +153,11 @@ class ScanningSession:
             meta_dict = self._cami.get_crop_meta_dict()
             self._cami.crop(*old)
             logging.debug(f"Reverted back to crop:\n {self._cami.get_crop_meta_dict()}")
-            if ref_type == P.extension_dark:
+            if ref_type == P.ref_dark_name:
                 self.dark = ref_frame
-            if ref_type == P.extension_white:
+            if ref_type == P.ref_white_name:
                 self.white = ref_frame
-            if ref_type == P.extension_light:
+            if ref_type == P.ref_light_name:
                 self.white = ref_frame
 
             F.save_frame(ref_frame, self.session_root + '/' + ref_type, meta_dict=meta_dict)
@@ -189,10 +189,10 @@ class ScanningSession:
 
     def generate_default_scan_control(self, path=None):
         if path is None:
-            path = self.session_root + '/' + P.control_file_name
+            path = self.session_root + '/' + P.fn_control
             abs_path = os.path.abspath(path)
         else:
-            abs_path = os.path.abspath(path + '/' + P.control_file_name)
+            abs_path = os.path.abspath(path + '/' + P.fn_control)
 
         if not os.path.exists(abs_path):
             print(f"Creating default control file to '{abs_path}'", end='')

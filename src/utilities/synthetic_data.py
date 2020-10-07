@@ -41,7 +41,7 @@ def light_frame_to_spectrogram():
     """
 
     source_session = 'light_test'
-    path = '../' + P.path_rel_scan + '/' + source_session + '/' + P.extension_light
+    path = '../' + P.path_rel_scan + '/' + source_session + '/' + P.ref_light_name
     print(f"path: {path}")
     frame_ds = F.load_frame(path)
     frame = frame_ds.frame

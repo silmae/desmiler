@@ -132,7 +132,7 @@ class UI:
 
     def inspect_light(self):
         if self.sc is not None:
-            path = self.sc.session_root + '/' + P.extension_light
+            path = self.sc.session_root + '/' + P.ref_light_name
             frame_ds = F.load_frame(path)
             frame = frame_ds.frame
             frame_inspector.plot_frame(frame)
