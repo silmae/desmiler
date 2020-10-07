@@ -29,6 +29,11 @@ frame_height = 2704
 # Height of the effective area that the slit can illuminate
 slit_height = 800
 
+random_noise_fac = 0.05
+
+cube_depth = 160
+stripe_width = 40
+
 def light_frame_to_spectrogram():
     """Creates a mean spectrogram from few rows of a frame and saves it.
 
@@ -80,7 +85,7 @@ def make_undistorted_frame():
     full_sensor = full_sensor * rand_row[:,None]
 
     # Add random noise
-    rando = np.random.uniform(0, 0.05*max_pixel_val, size=(frame_height, width))
+    rando = np.random.uniform(0, random_noise_fac*max_pixel_val, size=(frame_height, width))
     full_sensor = full_sensor + rando
 
     coords = {
@@ -202,9 +207,42 @@ def make_distorted_frame(distortions):
     # plt.show()
 
 def make_stripe_cube():
-    # TODO use distorted frames to create a distorted cube to test cube desmiling
-    pass
 
+    if not os.path.exists(distotion_smile_tilt_path + '.nc'):
+        make_distorted_frame(['smile', 'tilt'])
+
+    white_area_frame = F.load_frame(distotion_smile_tilt_path)
+    dark_area_frame = white_area_frame.copy(deep=True)
+    max_pixel_val = white_area_frame.frame.max().item()
+    width = dark_area_frame.x.size
+    height = dark_area_frame.y.size
+    dark_area_frame.frame.values = np.random.uniform(0, random_noise_fac*max_pixel_val, size=(height, width))
+
+    frameList = []
+
+    stripe_counter = 0
+    use_white = True
+    for i in range(cube_depth):
+        if stripe_counter > stripe_width-1:
+            use_white = not use_white
+            stripe_counter = 0
+        if use_white:
+            f = white_area_frame
+        else:
+            f = dark_area_frame
+
+        f.coords['scan_index'] = i
+        frameList.append(f)
+        stripe_counter += 1
+
+    frames = xr.concat(frameList, dim='scan_index')
+    # FIXME xarray.core.variable.MissingDimensionsError: cannot set variable 'dn' ...
+    cube = xr.Dataset(
+        data_vars={
+            'dn': frames,
+        },
+    )
+    F.save_cube(cube, P.path_rel_scan + '/' + P.example_scan_name + '/' + P.example_scan_name + '_cube')
 
 def make_shift_matrix():
     """Make shift matrix and save it to disk.
@@ -307,13 +345,13 @@ if __name__ == '__main__':
     # make_distorted_frame(['tilt'])
     # make_distorted_frame(['smile', 'tilt'])
 
-    show_source_spectrogram()
-    show_undistorted_frame()
-    show_smiled_frame()
-    show_tilted_frame()
-    show_smiled_tilted_frame()
-    show_desmiled_lut()
-    show_desmiled_intr()
+    # show_source_spectrogram()
+    # show_undistorted_frame()
+    # show_smiled_frame()
+    # show_tilted_frame()
+    # show_smiled_tilted_frame()
+    # show_desmiled_lut()
+    # show_desmiled_intr()
 
     # make_shift_matrix()
 
@@ -326,3 +364,5 @@ if __name__ == '__main__':
     # intr_frame = apply_frame_correction(sm, 1)
     # F.save_frame(intr_frame, desmile_intr_path)
     # frame_inspector.plot_frame(intr_frame, window_name='intr_frame')
+
+    make_stripe_cube()
