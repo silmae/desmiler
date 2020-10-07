@@ -14,6 +14,7 @@ from core import smile_correction as sc
 
 base_path = '../../examples/'
 
+# TODO rename to 'example_source' and move to top level dir, so that deleting examples folder does not matter?
 example_spectrogram_path = os.path.abspath(base_path + 'fluorescence_spectrogram.nc')
 undistorted_frame_path = os.path.abspath(base_path + 'undistorted_frame.nc')
 distotion_smile_path = base_path + 'distorted' + '_smile'
@@ -199,6 +200,10 @@ def make_distorted_frame(distortions):
     F.save_frame(u_frame, save_path)
     # plt.imshow(u_frame)
     # plt.show()
+
+def make_stripe_cube():
+    # TODO use distorted frames to create a distorted cube to test cube desmiling
+    pass
 
 
 def make_shift_matrix():

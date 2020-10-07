@@ -110,6 +110,8 @@ class UI:
         to preview folder.
         """
 
+        # TODO forcibly show the result with circle and line plots
+
         if self.sc is not None:
             self.sc.shoot_light()
         else:
