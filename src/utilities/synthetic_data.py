@@ -218,7 +218,7 @@ def make_stripe_cube():
     height = dark_area_frame.y.size
     dark_area_frame.frame.values = np.random.uniform(0, random_noise_fac*max_pixel_val, size=(height, width))
 
-    frameList = []
+    frame_list = []
 
     stripe_counter = 0
     use_white = True
@@ -232,17 +232,17 @@ def make_stripe_cube():
             f = dark_area_frame
 
         f.coords['scan_index'] = i
-        frameList.append(f)
+        frame_list.append(f)
         stripe_counter += 1
 
-    frames = xr.concat(frameList, dim='scan_index')
-    # FIXME xarray.core.variable.MissingDimensionsError: cannot set variable 'dn' ...
-    cube = xr.Dataset(
-        data_vars={
-            'dn': frames,
-        },
-    )
-    F.save_cube(cube, P.path_rel_scan + '/' + P.example_scan_name + '/' + P.example_scan_name + '_cube')
+    cube = xr.concat(frame_list, dim='scan_index')
+    # TODO this would make it look like the old data struct
+    # cube = xr.Dataset(
+    #     data_vars={
+    #         'dn': frames,
+    #     },
+    # )
+    F.save_cube(cube, '../' + P.path_rel_scan + '/' + P.example_scan_name + '/' + P.example_scan_name + '_cube')
 
 def make_shift_matrix():
     """Make shift matrix and save it to disk.
@@ -345,24 +345,21 @@ if __name__ == '__main__':
     # make_distorted_frame(['tilt'])
     # make_distorted_frame(['smile', 'tilt'])
 
-    # show_source_spectrogram()
-    # show_undistorted_frame()
-    # show_smiled_frame()
-    # show_tilted_frame()
-    # show_smiled_tilted_frame()
-    # show_desmiled_lut()
-    # show_desmiled_intr()
-
     # make_shift_matrix()
-
     # sm = F.load_shit_matrix(shift_path)
     # sm.plot.imshow()
     # plt.show()
     # lut_frame = apply_frame_correction(sm, 0)
     # F.save_frame(lut_frame, desmile_lut_path)
-    # frame_inspector.plot_frame(lut_frame, window_name='lut_frame')
     # intr_frame = apply_frame_correction(sm, 1)
     # F.save_frame(intr_frame, desmile_intr_path)
-    # frame_inspector.plot_frame(intr_frame, window_name='intr_frame')
 
-    make_stripe_cube()
+    show_source_spectrogram()
+    show_undistorted_frame()
+    show_smiled_frame()
+    show_tilted_frame()
+    show_smiled_tilted_frame()
+    show_desmiled_lut()
+    show_desmiled_intr()
+
+    # make_stripe_cube()
