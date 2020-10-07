@@ -18,6 +18,10 @@ ref_dark_name = 'dark'
 ref_white_name = 'white'
 ref_light_name = 'light'
 
+cube_raw_name = 'raw'
+cube_reflectance_name = 'rfl'
+cube_desmiled_name = 'dsml'
+
 freeform_session_name = 'freeform'
 
 # Default count of frames for dark, white, and peak light frames.

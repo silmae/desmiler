@@ -27,20 +27,26 @@ from core.camera_interface import CameraInterface
 import logging
 import toml
 
+import analysis.cube_inspector as ci
+
 class ScanningSession:
 
     def __init__(self, session_name:str):
         print(f"Creating session '{session_name}'")
         self.session_name = session_name
-        self.session_root = P.path_rel_scan + '/' + session_name
-        self.camera_setting_path = self.session_root + '/' + P.fn_camera_settings
-        self.scan_settings_path = os.path.abspath(self.session_root + '/' + P.fn_control)
+        self.session_root = P.path_rel_scan + '/' + session_name + '/'
+        self.camera_setting_path = self.session_root + P.fn_camera_settings
+        self.scan_settings_path = os.path.abspath(self.session_root + P.fn_control)
         self._cami = None
         self.scan_settings = None
 
-        self.dark_path  = os.path.abspath(self.session_root + '/' + P.ref_dark_name + '.nc')
-        self.white_path = os.path.abspath(self.session_root + '/' + P.ref_white_name + '.nc')
-        self.light_path = os.path.abspath(self.session_root + '/' + P.ref_light_name + '.nc')
+        self.dark_path  = os.path.abspath(self.session_root + P.ref_dark_name + '.nc')
+        self.white_path = os.path.abspath(self.session_root + P.ref_white_name + '.nc')
+        self.light_path = os.path.abspath(self.session_root + P.ref_light_name + '.nc')
+        self.cube_raw_path = os.path.abspath(self.session_root + P.cube_raw_name + '.nc')
+        self.cube_rfl_path = os.path.abspath(self.session_root + P.cube_rfl_name + '.nc')
+        self.cube_desmiled_path = os.path.abspath(self.session_root + P.cube_desmiled_name + '.nc')
+
         self.dark = None
         self.white = None
         self.light = None
@@ -204,6 +210,47 @@ class ScanningSession:
                 toml.dump(control_toml_s, file)
 
             print(f"Default control file created.")
+
+    def make_reflectance_cube(self):
+        """ Makes a reflectance cube out of a raw cube.
+
+        Loads the cube if not given.
+
+        Resulting cube is saved into scans/{scan_name}/{scan_name}_cube_rfl.nc and
+        returned as xarray Dataset.
+        """
+
+        # TODO jatka tasta. 
+        org = F.load_cube(self.cube_raw_path)
+
+        # print(f"Substracting dark frame...", end=' ')
+        # d = load_dark_frame(scan_name)
+        # org['dn_dark_corrected'] = ((d_along_scan, d_across_scan, d_spectral),
+        #                             (org[cube_data_name] > d) * (org[cube_data_name] - d).astype(np.float32))
+        # org = org.drop(cube_data_name)
+        # print(f"done")
+        #
+        # print(f"Dividing by white frame...", end=' ')
+        # # Y coordinates of the reference white (teflon block)
+        # # Along scan white reference area.
+        # white_ref_scan_slice = slice(410, 490)
+        # # Along scan white reference area.
+        # white = (org.dn_dark_corrected.isel({d_along_scan: white_ref_scan_slice})).mean(dim=(d_along_scan)).astype(
+        #     np.float32)
+        # rfl = org
+        # # Uncomment to drop lowest pixel values to zero
+        # # zeroLessThan = 40
+        # # rfl = org.where(org.dn_dark_corrected > zeroLessThan, 0.0)
+        # rfl['reflectance'] = (
+        # (d_along_scan, d_across_scan, d_spectral), (rfl.dn_dark_corrected / white).astype(np.float32))
+        # rfl.reflectance.values = np.nan_to_num(rfl.reflectance.values).astype(np.float32)
+        # rfl = rfl.drop('dn_dark_corrected')
+        # print(f"done")
+        #
+        # path = f'scans/{scan_name}/{scan_name}_cube_rfl.nc'
+        # print(f"Saving reflectance cube to {path}...", end=' ')
+        # rfl.to_netcdf(os.path.normpath(path), format='NETCDF4', engine='netcdf4')
+        # print(f"done")
 
 def create_example_scan():
     """Creates an example if does not exist."""
