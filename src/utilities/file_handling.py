@@ -87,11 +87,10 @@ def load_frame(path) -> Dataset:
     if not path_s.endswith('.nc'):
         path_s = path_s + '.nc'
     abs_path = os.path.abspath(path_s)
-    try:
-        frame_ds = xr.open_dataset(abs_path)
-        return frame_ds
-    finally:
-        frame_ds.close()
+
+    frame_ds = xr.open_dataset(abs_path)
+    frame_ds.close()
+    return frame_ds
 
 def save_cube(cube:Dataset, path):
 
@@ -112,11 +111,9 @@ def load_cube(path):
         path_s = path_s + '.nc'
     abs_path = os.path.abspath(path_s)
 
-    try:
-        cube_ds = xr.open_dataset(abs_path)
-        return cube_ds
-    finally:
-        cube_ds.close()
+    cube_ds = xr.open_dataset(abs_path)
+    cube_ds.close()
+    return cube_ds
 
 
 def load_control_file(path):
@@ -169,9 +166,8 @@ def load_shit_matrix(path) -> DataArray:
     if not path_s.endswith('.nc'):
         path_s = path_s + '.nc'
     abs_path = os.path.abspath(path_s)
-    try:
-        shift_matrix = xr.open_dataarray(abs_path)
-        return shift_matrix
-    finally:
-        shift_matrix.close()
+
+    shift_matrix = xr.open_dataarray(abs_path)
+    shift_matrix.close()
+    return shift_matrix
 
