@@ -399,7 +399,7 @@ if __name__ == '__main__':
     # make_distorted_frame(['tilt'])
     # make_distorted_frame(['smile', 'tilt'])
 
-    # make_shift_matrix()
+    make_shift_matrix()
     # sm = F.load_shit_matrix(shift_path)
     # sm.plot.imshow()
     # plt.show()
@@ -416,4 +416,4 @@ if __name__ == '__main__':
     # show_desmiled_lut()
     # show_desmiled_intr()
 
-    make_stripe_cube()
+    # make_stripe_cube()

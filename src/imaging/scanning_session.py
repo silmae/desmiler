@@ -28,6 +28,8 @@ import logging
 import toml
 import numpy as np
 
+from core import smile_correction as sc
+
 import analysis.cube_inspector as ci
 
 class ScanningSession:
@@ -253,11 +255,35 @@ class ScanningSession:
         rfl['reflectance'].values = np.nan_to_num(rfl['reflectance'].values).astype(np.float32)
         rfl = rfl.drop('dn_dark_corrected')
         print(f"done")
-        #
-        # path = f'scans/{scan_name}/{scan_name}_cube_rfl.nc'
+
         print(f"Saving reflectance cube to {self.cube_rfl_path}...", end=' ')
         F.save_cube(rfl, self.cube_rfl_path)
         print(f"done")
+
+    def desmile_cube(self, source_cube=None, shift_method=0):
+        """ Desmile a reflectance cube with lut of intr shifts and save and return the result."""
+
+        if shift_method == 0:
+            cube_type = 'lut'
+        elif shift_method == 1:
+            cube_type = 'intr'
+
+        if source_cube is None:
+            rfl = F.load_cube(self.cube_rfl_path)
+        else:
+            rfl = source_cube
+
+        s = F.load_shit_matrix(self.session_root + P.shift_name)
+        # s = self.crop_to_size(s)
+
+        print(f"Desmiling {cube_type} shifts...", end=' ')
+        desmiled = sc.apply_shift_matrix(rfl, s, method=shift_method, target_is_cube=True)
+        print(f"done")
+
+        print(f"Saving desmiled cube to {self.cube_desmiled_path}...", end=' ')
+        F.save_cube(desmiled, self.cube_desmiled_path)
+        print(f"done")
+        return desmiled
 
     def crop_to_size(self, frame):
         width = self.control['scan_settings']['width']

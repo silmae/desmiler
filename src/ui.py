@@ -154,10 +154,12 @@ if __name__ == '__main__':
     ui = UI()
     ui.start_session(P.example_scan_name)
     sc = ui.sc
-    sc.make_reflectance_cube()
+    # sc.make_reflectance_cube()
+    # desmiled = sc.desmile_cube()
 
     raw = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name + '.nc'))
-    ci = CubeInspector(raw, raw, raw, 'reflectance')
+    desmiled = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_name + '.nc'))
+    ci = CubeInspector(raw, desmiled, desmiled, 'reflectance')
     ci.show()
 
     # ui.run_scan()

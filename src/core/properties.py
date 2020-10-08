@@ -18,6 +18,8 @@ ref_dark_name = 'dark'
 ref_white_name = 'white'
 ref_light_name = 'light'
 
+shift_name = 'shift'
+
 cube_raw_name = 'raw'
 cube_reflectance_name = 'rfl'
 cube_desmiled_name = 'dsml'
