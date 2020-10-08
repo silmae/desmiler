@@ -51,6 +51,8 @@ class UI:
         self.sc = ScanningSession(session_name)
         print(f"Created new scanning session '{self.sc.session_name}'.")
 
+    # TODO start_session_copy() copy an existing session as a new session
+
     def start_freeform_session(self):
         """Freeform session will always overwrite old content with the same name."""
 
