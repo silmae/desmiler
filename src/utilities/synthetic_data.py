@@ -17,6 +17,7 @@ base_path = '../../examples/'
 # TODO rename to 'example_source' and move to top level dir, so that deleting examples folder does not matter?
 example_spectrogram_path = os.path.abspath(base_path + 'fluorescence_spectrogram.nc')
 undistorted_frame_path = os.path.abspath(base_path + 'undistorted_frame.nc')
+dark_frame_path = os.path.abspath(base_path + 'dark.nc')
 distotion_smile_path = base_path + 'distorted' + '_smile'
 distotion_tilt_path = base_path + 'distorted' + '_tilt'
 distotion_smile_tilt_path = base_path + 'distorted' + '_smile_tilt'
@@ -30,6 +31,7 @@ frame_height = 2704
 slit_height = 800
 
 random_noise_fac = 0.05
+row_noise_fac = 0.03
 
 cube_depth = 160
 stripe_width = 40
@@ -81,7 +83,7 @@ def make_undistorted_frame():
 
     # Multiply each row with a random number
     # rand_row = np.random.uniform(1, 1.10, size=(frame_height,))
-    rand_row = np.random.normal(1, 0.03, size=(frame_height,))
+    rand_row = np.random.normal(1, row_noise_fac, size=(frame_height,))
     full_sensor = full_sensor * rand_row[:,None]
 
     # Add random noise
@@ -103,6 +105,42 @@ def make_undistorted_frame():
 
     frame_inspector.plot_frame(frame)
     F.save_frame(frame, undistorted_frame_path)
+    print("done")
+
+def make_dark_frame():
+    """Creates an example of dark frame (just noise) to examples directory.
+
+    Frame data follows closely to the form that camazing uses in the frames it provides.
+    Attributes are omitted though.
+    """
+
+    print(f"Generating dark frame example to '{dark_frame_path}'...", end='')
+    source = F.load_frame(example_spectrogram_path)
+    width = source.frame.x.size
+    source_data = source.frame.data
+    max_pixel_val = source_data.max()
+
+    full_sensor = np.zeros((frame_height, width))
+
+    # Add random noise
+    rando = np.random.uniform(0, random_noise_fac*max_pixel_val, size=(frame_height, width))
+    full_sensor = full_sensor + rando
+
+    coords = {
+        "x": ("x", np.arange(0, source.frame.x.size) + 0.5),
+        "y": ("y", np.arange(0, frame_height) + 0.5),
+        "timestamp": dt.datetime.today().timestamp(),
+    }
+    dims = ('y', 'x')
+    frame = xr.DataArray(
+        full_sensor,
+        name="frame",
+        dims=dims,
+        coords=coords,
+    )
+
+    frame_inspector.plot_frame(frame)
+    F.save_frame(frame, dark_frame_path)
     print("done")
 
 def load_undistorted_frame():
@@ -208,15 +246,30 @@ def make_distorted_frame(distortions):
 
 def make_stripe_cube():
 
+    control = toml.loads(P.example_scan_control_content)
+    width = control['scan_settings']['width']
+    width_offset = control['scan_settings']['width_offset']
+    height = control['scan_settings']['height']
+    height_offset = control['scan_settings']['height_offset']
+
     if not os.path.exists(distotion_smile_tilt_path + '.nc'):
         make_distorted_frame(['smile', 'tilt'])
 
     white_area_frame = F.load_frame(distotion_smile_tilt_path)
+    white_area_frame = white_area_frame.isel({P.dim_x: slice(width_offset, width_offset + width),
+                        P.dim_y: slice(height_offset, height_offset + height)})
+    # white_area_frame.frame.values = np.nan_to_num(white_area_frame.frame.values)
+    white_area_frame['x'] = np.arange(0, white_area_frame.x.size) + 0.5
+    white_area_frame['y'] = np.arange(0, white_area_frame.y.size) + 0.5
     dark_area_frame = white_area_frame.copy(deep=True)
+    dark_area_frame = dark_area_frame.isel({P.dim_x: slice(width_offset, width_offset + width),
+                                              P.dim_y: slice(height_offset, height_offset + height)})
+
+
     max_pixel_val = white_area_frame.frame.max().item()
     width = dark_area_frame.x.size
     height = dark_area_frame.y.size
-    dark_area_frame.frame.values = np.random.uniform(0, random_noise_fac*max_pixel_val, size=(height, width))
+    dark_area_frame.frame.values = np.random.uniform(0, random_noise_fac*max_pixel_val, size=dark_area_frame.frame.values.shape)
 
     frame_list = []
 
@@ -339,7 +392,9 @@ def show_me(path, window_name=None):
 
 if __name__ == '__main__':
     # light_frame_to_spectrogram()
+
     # make_undistorted_frame()
+    # make_dark_frame()
     # make_distorted_frame(['smile'])
     # make_distorted_frame(['tilt'])
     # make_distorted_frame(['smile', 'tilt'])

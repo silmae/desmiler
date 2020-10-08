@@ -39,7 +39,7 @@ class ScanningSession:
         self.camera_setting_path = self.session_root + P.fn_camera_settings
         self.scan_settings_path = os.path.abspath(self.session_root + P.fn_control)
         self._cami = None
-        self.scan_settings = None
+        self.control = None
 
         self.dark_path  = os.path.abspath(self.session_root + P.ref_dark_name + '.nc')
         self.white_path = os.path.abspath(self.session_root + P.ref_white_name + '.nc')
@@ -109,7 +109,7 @@ class ScanningSession:
         self.load_control_file()
 
     def load_control_file(self):
-        self.scan_settings = F.load_control_file(self.scan_settings_path)
+        self.control = F.load_control_file(self.scan_settings_path)
 
     def session_exists(self) -> bool:
         if os.path.exists(self.session_root):
@@ -174,14 +174,14 @@ class ScanningSession:
             logging.error(f"Wrong reference type '{ref_type}'")
 
     def run_scan(self, mock=True):
-        width = self.scan_settings['scan_settings']['width']
-        width_offset = self.scan_settings['scan_settings']['width_offset']
-        height = self.scan_settings['scan_settings']['height']
-        height_offset = self.scan_settings['scan_settings']['height_offset']
+        width = self.control['scan_settings']['width']
+        width_offset = self.control['scan_settings']['width_offset']
+        height = self.control['scan_settings']['height']
+        height_offset = self.control['scan_settings']['height_offset']
         if mock:
             print(f"Running a mock scan. Just printing you the parameters etc. but not recording.")
             print("Scanning parameters from control file:")
-            for key, val in self.scan_settings['scan_settings'].items():
+            for key, val in self.control['scan_settings'].items():
                 print(f"\t'{key}': {val}")
             self.crop(width, width_offset, height, height_offset)
         else:
@@ -223,39 +223,54 @@ class ScanningSession:
         TODO move this method to own file once working
         """
 
-        if self.dark is None:
-            logging.warning(f"Cannot calculate reflectance cube without dark frame. Aborting make_reflectance_cube().")
-            return
-
         org = F.load_cube(self.cube_raw_path)
+        if self.dark is not None:
+            dark_frame = self.crop_to_size(self.dark.frame)
+            print(f"Subtracting dark frame...", end=' ')
+            org['dn_dark_corrected'] = ((P.dim_scan, P.dim_y, P.dim_x),
+                (org[P.naming_cube_data].values > dark_frame.values)
+                                        * (org[P.naming_cube_data].values - dark_frame.values).astype(np.float32))
+            org = org.drop(P.naming_cube_data)
+            print(f"done")
 
-        print(f"Subtracting dark frame...", end=' ')
-        org['dn_dark_corrected'] = ((P.dim_scan, P.dim_y, P.dim_x),
-            (org[P.naming_cube_data] > self.dark) * (org[P.naming_cube_data] - self.dark).astype(np.float32))
-        org = org.drop(P.naming_cube_data)
-        print(f"done")
+        print(f"Dividing by white frame...", end=' ')
+        # Y coordinates of the reference white (teflon block)
+        # Along scan white reference area.
+        use_area_from_cube = False
+        if use_area_from_cube:
+            white_ref_scan_slice = slice(410, 490)
+            # Along scan white reference area.
+            # white = (org.dn_dark_corrected.isel({d_along_scan: white_ref_scan_slice})).mean(dim=(d_along_scan)).astype(
+            #     np.float32)
+        else:
+            white =  self.crop_to_size(self.white.frame)
 
-        # print(f"Dividing by white frame...", end=' ')
-        # # Y coordinates of the reference white (teflon block)
-        # # Along scan white reference area.
-        # white_ref_scan_slice = slice(410, 490)
-        # # Along scan white reference area.
-        # white = (org.dn_dark_corrected.isel({d_along_scan: white_ref_scan_slice})).mean(dim=(d_along_scan)).astype(
-        #     np.float32)
-        # rfl = org
+        rfl = org
         # # Uncomment to drop lowest pixel values to zero
         # # zeroLessThan = 40
         # # rfl = org.where(org.dn_dark_corrected > zeroLessThan, 0.0)
-        # rfl['reflectance'] = (
-        # (d_along_scan, d_across_scan, d_spectral), (rfl.dn_dark_corrected / white).astype(np.float32))
-        # rfl.reflectance.values = np.nan_to_num(rfl.reflectance.values).astype(np.float32)
-        # rfl = rfl.drop('dn_dark_corrected')
-        # print(f"done")
+        rfl['reflectance'] = ((P.dim_scan, P.dim_y, P.dim_x), (rfl['dn_dark_corrected'] / white).astype(np.float32))
+        rfl['reflectance'].values = np.nan_to_num(rfl['reflectance'].values).astype(np.float32)
+        rfl = rfl.drop('dn_dark_corrected')
+        print(f"done")
         #
         # path = f'scans/{scan_name}/{scan_name}_cube_rfl.nc'
-        # print(f"Saving reflectance cube to {path}...", end=' ')
-        # rfl.to_netcdf(os.path.normpath(path), format='NETCDF4', engine='netcdf4')
-        # print(f"done")
+        print(f"Saving reflectance cube to {self.cube_rfl_path}...", end=' ')
+        F.save_cube(rfl, self.cube_rfl_path)
+        print(f"done")
+
+    def crop_to_size(self, frame):
+        width = self.control['scan_settings']['width']
+        width_offset = self.control['scan_settings']['width_offset']
+        height = self.control['scan_settings']['height']
+        height_offset = self.control['scan_settings']['height_offset']
+        frame = frame.isel({P.dim_x: slice(width_offset, width_offset + width),
+                                  P.dim_y: slice(height_offset, height_offset + height)})
+
+        frame['x'] = np.arange(0, frame.x.size) + 0.5
+        frame['y'] = np.arange(0, frame.y.size) + 0.5
+        return frame
+
 
 def create_example_scan():
     """Creates an example if does not exist."""

@@ -151,13 +151,13 @@ class UI:
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
-    # ui = UI()
-    # ui.start_session(P.example_scan_name)
-    # sc = ui.sc
-    # sc.make_reflectance_cube()
+    ui = UI()
+    ui.start_session(P.example_scan_name)
+    sc = ui.sc
+    sc.make_reflectance_cube()
 
-    raw = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_raw_name + '.nc'))
-    ci = CubeInspector(raw, raw, raw, 'dn')
+    raw = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name + '.nc'))
+    ci = CubeInspector(raw, raw, raw, 'reflectance')
     ci.show()
 
     # ui.run_scan()
