@@ -138,7 +138,7 @@ class CubeInspector:
         self.sam_ref_x = self.y
 
         # Modes: 1 for reflectance image, 2 for false color image, 3 for spectral angle
-        self.mode = 1
+        self.mode = 3
 
         # Containers for false color images
         self.org_false = None
@@ -180,8 +180,8 @@ class CubeInspector:
         self.spectral_filter_step = 100
 
         # Cosine boxes
-        self.sam_window_start = [490,258]
-        self.sam_window_end = [490+460,310]
+        self.sam_window_start = [int(self.y/2)-int(self.y/4),int(self.idx/2)-int(self.idx/4)]
+        self.sam_window_end = [int(self.y/2)+int(self.y/4),int(self.idx/2)+int(self.idx/4)]
         self.sam_window_start_sug = [self.sam_window_start[0], self.sam_window_start[1]]
         self.sam_window_corner_given = False
 
@@ -502,15 +502,15 @@ class CubeInspector:
         sams = []
         self.sam_chunks_list = []
         sam, cosMapChunk = calculate_sam(self.org, self.sam_window_start, self.sam_window_end,
-                                         self.sam_ref_x, self.toggle_radians, self.spectral_filter, self.viewable)
+                                         self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
         sams.append(sam)
         self.sam_chunks_list.append(cosMapChunk)
-        sam, cosMapChunk = calculate_sam(self.lut, self.sam_window_start, self.sam_window_end, self.sam_ref_x,
-                                         self.toggle_radians, self.spectral_filter, self.viewable)
+        sam, cosMapChunk = calculate_sam(self.lut, self.sam_window_start, self.sam_window_end,
+                                         self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
         sams.append(sam)
         self.sam_chunks_list.append(cosMapChunk)
-        sam, cosMapChunk = calculate_sam(self.intr, self.sam_window_start, self.sam_window_end, self.sam_ref_x,
-                                         self.toggle_radians, self.spectral_filter, self.viewable)
+        sam, cosMapChunk = calculate_sam(self.intr, self.sam_window_start, self.sam_window_end,
+                                         self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
         sams.append(sam)
         self.sam_chunks_list.append(cosMapChunk)
 
