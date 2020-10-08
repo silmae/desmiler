@@ -3,12 +3,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.cm as cm
 
-from core import scan as scan
+import core.properties as P
 
-# Expected dimension names of the spectral cube.
-d_along_scan   = 'index'
-d_across_scan  = 'y'
-d_spectral     = 'x'
+from core import scan as scan
 
 # Under what name the data is in the cube. 
 cube_data_name = 'dn'
@@ -16,7 +13,7 @@ cube_data_name = 'dn'
 # General calculations to form false color images, spectral angle maps, etc.
 # --------------------------
 
-def calculate_false_color_images(org, lut, intr):
+def calculate_false_color_images(org, lut, intr, viewable):
     """ Calculate false color images for all three cubes.
 
     Expects to find color checker blue, green, and red tile from 
@@ -27,16 +24,16 @@ def calculate_false_color_images(org, lut, intr):
     gBand = np.arange(660,860)
     bBand = np.arange(300, 500)
     rgb = np.array([rBand, gBand, bBand])
-    # Assumes that dimensions are ordered (d_along_scan, d_across_scan, d_spectral)
-    org_mean = np.mean(org.reflectance.values[:,:,rgb], axis=3).astype(np.float32)
-    lut_mean = np.mean(lut.reflectance.values[:,:,rgb], axis=3).astype(np.float32)
-    intr_mean = np.mean(intr.reflectance.values[:,:,rgb], axis=3).astype(np.float32)
+    # Assumes that dimensions are ordered (P.dim_scan, P.dim_y, P.dim_x)
+    org_mean = np.mean(org[viewable].values[:,:,rgb], axis=3).astype(np.float32)
+    lut_mean = np.mean(lut[viewable].values[:,:,rgb], axis=3).astype(np.float32)
+    intr_mean = np.mean(intr[viewable].values[:,:,rgb], axis=3).astype(np.float32)
     org_false = (org_mean / np.max(org_mean, axis=(0,1))).clip(min=0.0)
     lut_false = (lut_mean / np.max(lut_mean, axis=(0,1))).clip(min=0.0)
     intr_false = (intr_mean / np.max(intr_mean, axis=(0,1))).clip(min=0.0)
     return org_false, lut_false, intr_false
 
-def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x, 
+def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x, viewable,
                 use_radians=False, spectral_filter=None, use_scm=False):
     """Calculates spectral angle map of a single cube.
     
@@ -79,20 +76,21 @@ def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x,
     cos_ref = np.clip(sam_ref_x, sam_window_start[0], sam_window_end[0]) 
 
     # Reference spectrum as mean of a vertical line in the box.
-    a = sourceCube.reflectance.isel(y=cos_ref, index=y_slice, x=sf).mean(dim=d_along_scan).astype(np.float64)
+
+    a = sourceCube[viewable].isel({P.dim_y: cos_ref, P.dim_scan: y_slice, P.dim_x:sf}).mean(dim=P.dim_scan).astype(np.float64)
     # Reference spectrum as a single pixel spectrum
     # a = sourceCube.reflectance.isel(y=cos_ref, index=int((sam_window_end[1]-sam_window_start[1])/2), x=sf)
     # Reference point as a mean over the whole box area
     # a = sourceCube.reflectance.isel(y=x_slice, index=y_slice, x=sf).mean(dim=('y','index'))
-    b = sourceCube.reflectance.isel(y=x_slice, index=y_slice, x=sf).astype(np.float64)
+    b = sourceCube[viewable].isel({P.dim_y: x_slice, P.dim_scan: y_slice, P.dim_x:sf}).astype(np.float64)
 
     if not use_scm:
         ###    SAM    ####
         chunk = a.dot(b) / (np.linalg.norm(a) * np.linalg.norm(b, axis=2))
     else:
         ###    SCM    ####
-        aMean = a.mean(dim='x')
-        bMean = b.mean(dim='x')
+        aMean = a.mean(dim=P.dim_x)
+        bMean = b.mean(dim=P.dim_x)
         A = a - aMean
         B = b - bMean
         chunk = A.dot(B) / ((np.linalg.norm(A) * np.linalg.norm(B, axis=2)))
@@ -105,11 +103,11 @@ def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x,
         chunk = np.arccos(chunk)
         chunk = chunk.rename('cosine angle')
         # Initialize cosmap image with zeros
-        sam = np.zeros_like(sourceCube.reflectance.isel(x=0).values).astype(np.float64)
+        sam = np.zeros_like(sourceCube[viewable].isel({P.dim_x:0}).values).astype(np.float64)
     else:
         chunk = chunk.rename('dot product')
         # Initialize cosmap image with ones
-        sam = np.ones_like(sourceCube.reflectance.isel(x=0).values).astype(np.float64)
+        sam = np.ones_like(sourceCube[viewable].isel({P.dim_x:0}).values).astype(np.float64)
 
     sam[y_slice, x_slice] = chunk
 
@@ -120,23 +118,24 @@ class CubeInspector:
     
     """
 
-    def __init__(self, scan_name='test_scan_1'):
+    def __init__(self, org, lut, intr, viewable):
         super().__init__()
         print(f"Loading cubes. This might take a while...", end=' ', flush=True)
-        self.org = scan.load_cube(scan_name, cube_type='rfl')
-        self.lut = scan.load_cube(scan_name, cube_type='rfl_lut')
-        self.intr = scan.load_cube(scan_name, cube_type='rfl_intr')
+        self.org = org
+        self.lut = lut
+        self.intr = intr
+        self.viewable = viewable
         # Interpolative shift may cause very small negative values, which should be clipped. 
-        self.intr.reflectance.values = self.intr.reflectance.values.clip(min=0.0).astype(np.float32)
+        # self.intr[self.viewable].values = self.intr[self.viewable].values.clip(min=0.0).astype(np.float32)
         print(f"done")
 
         # Selected pixel and band in CUBE's coordinates. show() deals with the 
         # transformation from plot coordinates.
-        self.idx = 290 # image y
-        self.y = 700 # image x
-        self.x = 600 # image band
+        self.idx = int(self.org[self.viewable][P.dim_scan].size / 2) # image y
+        self.y = int(self.org[self.viewable][P.dim_y].size / 2) # image x
+        self.x = int(self.org[self.viewable][P.dim_x].size / 2) # image band
         # Reference point for spectral angle. In same dimension as self.y.
-        self.sam_ref_x = 800 
+        self.sam_ref_x = self.y
 
         # Modes: 1 for reflectance image, 2 for false color image, 3 for spectral angle
         self.mode = 1
@@ -175,8 +174,8 @@ class CubeInspector:
         self.sam_chunks_list = []
 
         # Filter out noisy ends of the spectrum in cosine maps.
-        self.spectral_filter = slice(500,1800)
-        self.spectral_filter_max = self.org.reflectance[d_spectral].size
+        self.spectral_filter_max = self.org[self.viewable][P.dim_x].size
+        self.spectral_filter = slice(0, self.spectral_filter_max)
         # How much the spectral filter is moved to left or right.        
         self.spectral_filter_step = 100
 
@@ -198,9 +197,9 @@ class CubeInspector:
     
     def init_images(self):
         print("Initializing images...", end=' ', flush=True)
-        self.images.append(self.org.reflectance.isel( x=self.x).plot.imshow(ax=self.ax[0,1]))
-        self.images.append(self.lut.reflectance.isel(x=self.x).plot.imshow(ax=self.ax[1,1]))
-        self.images.append(self.intr.reflectance.isel(x=self.x).plot.imshow(ax=self.ax[1,0]))
+        self.images.append(self.org[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[0,1]))
+        self.images.append(self.lut[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[1,1]))
+        self.images.append(self.intr[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[1,0]))
         print("done")
 
     def connect_ui(self):
@@ -374,13 +373,13 @@ class CubeInspector:
         print(f"Updating images (mode {self.mode})...", end=' ', flush=True)
 
         if self.mode == 1:
-            source = self.org.reflectance.isel( x=self.x)
+            source = self.org[self.viewable].isel({P.dim_x:self.x})
             self.images[0].set_data(source)
             self.images[0].set_norm(cm.colors.Normalize(source.min(), source.max()))
-            source = self.lut.reflectance.isel( x=self.x)
+            source = self.lut[self.viewable].isel({P.dim_x:self.x})
             self.images[1].set_data(source)
             self.images[1].set_norm(cm.colors.Normalize(source.min(), source.max()))
-            source = self.intr.reflectance.isel( x=self.x)
+            source = self.intr[self.viewable].isel({P.dim_x:self.x})
             self.images[2].set_data(source)
             self.images[2].set_norm(cm.colors.Normalize(source.min(), source.max()))          
            
@@ -389,7 +388,7 @@ class CubeInspector:
             self.ax[1,0].set_title(f'INTR, band={self.x}', color=self.colors_org_lut_intr[2])
         elif self.mode == 2:
             if not self.false_color_calculated:
-                self.org_false, self.lut_false, self.intr_false = calculate_false_color_images(self.org, self.lut, self.intr)
+                self.org_false, self.lut_false, self.intr_false = calculate_false_color_images(self.org, self.lut, self.intr, self.viewable)
                 self.false_color_calculated = True
 
             self.images[0].set_data(self.org_false)
@@ -417,13 +416,13 @@ class CubeInspector:
         
         self.ax[0,0].clear()
         if self.mode == 1 or self.mode == 2:
-            self.org.reflectance.isel(y=self.y, index=self.idx).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[0])
-            self.lut.reflectance.isel(y=self.y, index=self.idx).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[1])
-            self.intr.reflectance.isel(y=self.y, index=self.idx).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[2])
+            self.org[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[0])
+            self.lut[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[1])
+            self.intr[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[2])
 
             # Reference color spectra
             for i,_ in enumerate(self.rgb_x_chunks):
-                rgb_chunk = self.org.reflectance.isel(y=self.rgb_y_chunk, index=self.rgb_x_chunks[i]).mean(dim=(d_along_scan,d_across_scan))
+                rgb_chunk = self.org[self.viewable].isel({P.dim_y:self.rgb_y_chunk, P.dim_scan:self.rgb_x_chunks[i]}).mean(dim=(P.dim_scan,P.dim_y))
                 rgb_chunk.plot(ax=self.ax[0,0], color=self.colors_rbg[i])
 
             self.ax[0,0].set_title('Spectrograms')
@@ -442,7 +441,7 @@ class CubeInspector:
             _,ylim = self.ax[0,0].get_ylim()
             ylim = int(ylim)
             xd = np.ones(2)*self.x
-            yd = np.array([0, np.max(self.org.reflectance.isel(y=self.y, index=self.idx))])
+            yd = np.array([0, np.max(self.org[self.viewable].isel({P.dim_y: self.y, P.dim_scan: self.idx}))])
             self.ax[0,0].plot(xd,yd,color=self.color_pixel_selection)
         elif self.mode == 3:
             # Draw mean of each cos box.
@@ -502,13 +501,16 @@ class CubeInspector:
 
         sams = []
         self.sam_chunks_list = []
-        sam, cosMapChunk = calculate_sam(self.org, self.sam_window_start, self.sam_window_end, self.sam_ref_x, self.toggle_radians, self.spectral_filter)
+        sam, cosMapChunk = calculate_sam(self.org, self.sam_window_start, self.sam_window_end,
+                                         self.sam_ref_x, self.toggle_radians, self.spectral_filter, self.viewable)
         sams.append(sam)
         self.sam_chunks_list.append(cosMapChunk)
-        sam, cosMapChunk = calculate_sam(self.lut, self.sam_window_start, self.sam_window_end, self.sam_ref_x, self.toggle_radians, self.spectral_filter)
+        sam, cosMapChunk = calculate_sam(self.lut, self.sam_window_start, self.sam_window_end, self.sam_ref_x,
+                                         self.toggle_radians, self.spectral_filter, self.viewable)
         sams.append(sam)
         self.sam_chunks_list.append(cosMapChunk)
-        sam, cosMapChunk = calculate_sam(self.intr, self.sam_window_start, self.sam_window_end, self.sam_ref_x, self.toggle_radians, self.spectral_filter)
+        sam, cosMapChunk = calculate_sam(self.intr, self.sam_window_start, self.sam_window_end, self.sam_ref_x,
+                                         self.toggle_radians, self.spectral_filter, self.viewable)
         sams.append(sam)
         self.sam_chunks_list.append(cosMapChunk)
 

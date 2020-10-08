@@ -241,7 +241,7 @@ def make_stripe_cube():
             'dn': frames,
         },
     )
-    F.save_cube(cube, '../' + P.path_rel_scan + '/' + P.example_scan_name + '/' + P.example_scan_name + '_cube')
+    F.save_cube(cube, '../' + P.path_rel_scan + '/' + P.example_scan_name + '/' + P.cube_raw_name)
 
 def make_shift_matrix():
     """Make shift matrix and save it to disk.

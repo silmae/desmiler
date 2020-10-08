@@ -14,6 +14,8 @@ from utilities import file_handling as F
 from imaging.preview import Preview
 
 import numpy as np
+import os
+from analysis.cube_inspector import CubeInspector
 
 import logging
 
@@ -149,15 +151,22 @@ class UI:
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
-    ui = UI()
-    # ui.start_session('my_new_session')
+    # ui = UI()
+    # ui.start_session(P.example_scan_name)
+    # sc = ui.sc
+    # sc.make_reflectance_cube()
+
+    raw = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_raw_name + '.nc'))
+    ci = CubeInspector(raw, raw, raw, 'dn')
+    ci.show()
+
     # ui.run_scan()
     # ui.crop(200,100,150,300)
     # ui.shoot_dark()x
     # ui.shoot_white()
     # ui.shoot_light()
 
-    ui.start_freeform_session()
+    # ui.start_freeform_session()
     # ui.inspect_light()
 
     # ui.start_preview()

@@ -31,6 +31,7 @@ dwl_default_method = 'mean'
 
 # A single frame dataset uses this name to save the frame.
 naming_frame_data = 'frame'
+naming_cube_data = 'dn'
 
 ########### Dimension names #############
 # Not iplemented everywhere

@@ -26,6 +26,7 @@ from utilities import file_handling as F
 from core.camera_interface import CameraInterface
 import logging
 import toml
+import numpy as np
 
 import analysis.cube_inspector as ci
 
@@ -44,7 +45,7 @@ class ScanningSession:
         self.white_path = os.path.abspath(self.session_root + P.ref_white_name + '.nc')
         self.light_path = os.path.abspath(self.session_root + P.ref_light_name + '.nc')
         self.cube_raw_path = os.path.abspath(self.session_root + P.cube_raw_name + '.nc')
-        self.cube_rfl_path = os.path.abspath(self.session_root + P.cube_rfl_name + '.nc')
+        self.cube_rfl_path = os.path.abspath(self.session_root + P.cube_reflectance_name + '.nc')
         self.cube_desmiled_path = os.path.abspath(self.session_root + P.cube_desmiled_name + '.nc')
 
         self.dark = None
@@ -218,18 +219,22 @@ class ScanningSession:
 
         Resulting cube is saved into scans/{scan_name}/{scan_name}_cube_rfl.nc and
         returned as xarray Dataset.
+
+        TODO move this method to own file once working
         """
 
-        # TODO jatka tasta. 
+        if self.dark is None:
+            logging.warning(f"Cannot calculate reflectance cube without dark frame. Aborting make_reflectance_cube().")
+            return
+
         org = F.load_cube(self.cube_raw_path)
 
-        # print(f"Substracting dark frame...", end=' ')
-        # d = load_dark_frame(scan_name)
-        # org['dn_dark_corrected'] = ((d_along_scan, d_across_scan, d_spectral),
-        #                             (org[cube_data_name] > d) * (org[cube_data_name] - d).astype(np.float32))
-        # org = org.drop(cube_data_name)
-        # print(f"done")
-        #
+        print(f"Subtracting dark frame...", end=' ')
+        org['dn_dark_corrected'] = ((P.dim_scan, P.dim_y, P.dim_x),
+            (org[P.naming_cube_data] > self.dark) * (org[P.naming_cube_data] - self.dark).astype(np.float32))
+        org = org.drop(P.naming_cube_data)
+        print(f"done")
+
         # print(f"Dividing by white frame...", end=' ')
         # # Y coordinates of the reference white (teflon block)
         # # Along scan white reference area.
