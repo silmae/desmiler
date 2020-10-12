@@ -90,9 +90,15 @@ def load_frame(path) -> Dataset:
         path_s = path_s + '.nc'
     abs_path = os.path.abspath(path_s)
 
-    frame_ds = xr.open_dataset(abs_path)
-    frame_ds.close()
-    return frame_ds
+    if os.path.exists(abs_path):
+        if os.path.isfile(abs_path):
+            frame_ds = xr.open_dataset(abs_path)
+            frame_ds.close()
+            return frame_ds
+        else:
+            raise RuntimeError(f"Given frame path '{abs_path}' is not a file.")
+    else:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), abs_path)
 
 def save_cube(cube:Dataset, path):
 
