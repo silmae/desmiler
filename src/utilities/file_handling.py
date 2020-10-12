@@ -8,6 +8,7 @@ from xarray import Dataset
 
 import toml
 from toml import TomlDecodeError
+import errno
 
 
 def create_default_directories():
@@ -21,13 +22,14 @@ def create_default_directories():
 def create_directory(path:str):
     """Creates a new directory with given relative path string."""
 
-    logging.info(f"Creating new directory {path}")
+    abs_path = os.path.abspath(path)
+    logging.info(f"Creating new directory {abs_path}")
     try:
-        os.mkdir(path)
+        os.mkdir(abs_path)
     except OSError:
-        logging.warning(f"Creation of the directory {path} failed")
+        logging.warning(f"Creation of the directory {abs_path} failed")
     else:
-        logging.info(f"Successfully created the directory {path}")
+        logging.info(f"Successfully created the directory {abs_path}")
 
 
 def save_frame(frame:DataArray, path, meta_dict=None):
@@ -104,16 +106,35 @@ def save_cube(cube:Dataset, path):
 
 
 def load_cube(path):
-    """ Loads and returns a cube. Closes file handle once done."""
+    """ Loads and returns a cube. Closes file handle once done.
+
+    Returns
+    -------
+        Dataset
+            Loaded cube as xarray Dataset object.
+
+    Raises
+    ------
+        RuntimeError
+            if path is not a file.
+        FileNotFoundError
+            if path does not exist.
+    """
 
     path_s = str(path)
     if not path_s.endswith('.nc'):
         path_s = path_s + '.nc'
     abs_path = os.path.abspath(path_s)
 
-    cube_ds = xr.open_dataset(abs_path)
-    cube_ds.close()
-    return cube_ds
+    if os.path.exists(abs_path):
+        if os.path.isfile(abs_path):
+            cube_ds = xr.open_dataset(abs_path)
+            cube_ds.close()
+            return cube_ds
+        else:
+            raise RuntimeError(f"Given cube path '{abs_path}' is not a file.")
+    else:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), abs_path)
 
 
 def load_control_file(path):
