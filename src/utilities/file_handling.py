@@ -178,7 +178,7 @@ def save_shift_matrix(shift_matrix:DataArray, path):
     abs_path = os.path.abspath(path_s)
 
     try:
-        shift_matrix.to_netcdf(os.path.normpath(abs_path))
+        shift_matrix.to_netcdf(abs_path)
     finally:
         shift_matrix.close()
 
