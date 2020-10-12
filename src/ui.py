@@ -12,7 +12,7 @@ from core import properties as P
 from utilities import file_handling as F
 from imaging.preview import Preview
 
-import synthetic_data as synthetic
+import utilities.synthetic_data as synthetic
 
 import logging
 
@@ -157,6 +157,7 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
     ui.start_session(P.example_scan_name)
+    ui.inspect_light()
     # sc = ui.sc
     # sc.make_reflectance_cube()
     # desmiled = sc.desmile_cube()

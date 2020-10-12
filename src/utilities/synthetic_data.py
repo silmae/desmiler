@@ -431,9 +431,9 @@ def generate_cube_examples():
     check_dirs()
     make_stripe_cube()
     session = ScanningSession(P.example_scan_name)
-    rfl = session.make_reflectance_cube()
-    session.desmile_cube(rfl, shift_method=0)
-    session.desmile_cube(rfl, shift_method=1)
+    session.make_reflectance_cube()
+    session.desmile_cube(shift_method=0)
+    session.desmile_cube(shift_method=1)
 
 def generate_frame_examples():
     check_dirs()
@@ -456,6 +456,7 @@ def generate_all_examples():
     generate_cube_examples()
 
 def check_dirs():
+    F.create_default_directories()
     if not os.path.exists(P.path_rel_scan + P.example_scan_name):
         F.create_directory(P.path_rel_scan + P.example_scan_name)
     if not os.path.exists(P.path_example_frames):
@@ -490,7 +491,7 @@ def show_cube_examples():
 def show_raw_cube():
     try:
         raw = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_raw_name)
-        ci = CubeInspector(raw, raw, raw, 'dn')
+        ci = CubeInspector(raw, raw, raw, P.naming_cube_data)
         ci.show()
     except FileNotFoundError as fnf:
         logging.error(fnf)
@@ -503,9 +504,11 @@ if __name__ == '__main__':
     # light_frame_to_spectrogram()
 
     # generate_frame_examples()
+    # generate_cube_examples()
+
     # show_frame_examples()
 
-    make_stripe_cube()
     show_raw_cube()
+    show_cube_examples()
+    # show_shift_matrix()
 
-    pass
