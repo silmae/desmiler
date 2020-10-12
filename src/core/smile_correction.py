@@ -12,6 +12,7 @@ import xarray as xr
 import math
 
 from core.spectral_line import SpectralLine
+from core import properties as P
 
 def construct_bandpass_filter(peak_light_frame, location_estimates, filter_window_width):
     """ Constructs a bandpass filter for given frame.
@@ -331,7 +332,7 @@ def _intr_shift_cube(cube, shift_matrix):
             'x_shift'    :   shift_matrix,
             },
     )
-    ds['desmiled_x'] =  ds.x - ds.x_shift
+    ds['desmiled_x'] =  ds[P.dim_x] - ds.x_shift
 
     # This old stuff is probably broken because new cropping system 6.10.2020
     # ds.coords['new_x'] = np.linspace(0, cube.reflectance.x.size, cube.reflectance.x.size)
@@ -341,16 +342,16 @@ def _intr_shift_cube(cube, shift_matrix):
     max_x = cube.reflectance.x.max().item()
     ds.coords['new_x'] = np.linspace(min_x, max_x, cube.reflectance.x.size)
 
-    gouped = ds.groupby('y')
+    gouped = ds.groupby(P.dim_y)
     ds = gouped.apply(_desmile_row).astype(np.float32)
     ds = ds.drop('x_shift')
-    ds = ds.drop('x')
+    ds = ds.drop(P.dim_x)
     renames = {'new_x':'x'}
     ds = ds.rename(renames)
     # Transpose back into original shape.
     # I was unable to find out why apply() switches the 
     # dimensions to (y, index, x)
-    ds = ds.transpose('index', 'y', 'x')
+    ds = ds.transpose(P.dim_scan, P.dim_y, P.dim_x)
     isNan = np.isnan(ds.reflectance.values).any()
     if isNan:
         print(f"Interpolatively shifted cube contains NaNs.")
