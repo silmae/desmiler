@@ -22,7 +22,8 @@ shift_name = 'shift'
 
 cube_raw_name = 'raw'
 cube_reflectance_name = 'rfl'
-cube_desmiled_name = 'dsml'
+cube_desmiled_lut = 'desmiled_lut'
+cube_desmiled_intr = 'desmiled_intr'
 
 freeform_session_name = 'freeform'
 
@@ -44,6 +45,7 @@ dim_scan = 'scan_index'
 
 ########### Example related #############
 
+path_example_frames = '../' + path_project_root + 'examples/'
 example_scan_name = 'example_scan'
 example_scan_control_content =\
 """
