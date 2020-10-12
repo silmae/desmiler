@@ -275,6 +275,8 @@ def make_distorted_frame(distortions, amount=None):
 
 def make_stripe_cube():
 
+    print(f"Generating stripe example raw cube.")
+
     control = toml.loads(P.example_scan_control_content)
     width = control['scan_settings']['width']
     width_offset = control['scan_settings']['width_offset']
@@ -293,27 +295,27 @@ def make_stripe_cube():
     white_area_frame['y'] = np.arange(0, white_area_frame.y.size) + 0.5
     area_shape = white_area_frame.frame.values.shape
     dark_area_frame = white_area_frame.copy(deep=True)
-    dark_area_frame = dark_area_frame.isel({P.dim_x: x_slice,P.dim_y: y_slice})
     max_pixel_val = white_area_frame.frame.max().item()
     dark_area_frame.frame.values = np.random.uniform(0, random_noise_fac*max_pixel_val,size=area_shape)
 
     frame_list = []
     stripe_counter = 0
     use_white = True
+    roll_max = 3
     for i in range(cube_depth):
         if stripe_counter > stripe_width-1:
             use_white = not use_white
             stripe_counter = 0
         rando = np.random.uniform(0, random_noise_fac * max_pixel_val, size=area_shape)
         if use_white:
-            white_area_frame.frame.values = white_area_frame.frame.values + rando
-            f = white_area_frame.frame
+            f = white_area_frame.copy(deep=True)
+            f.frame.values = f.frame.values + rando
         else:
-            dark_area_frame.frame.values = rando
-            f = dark_area_frame.frame
+            f = dark_area_frame.copy(deep=True)
+            f.frame.values = rando
 
         f.coords[P.dim_scan] = i
-        frame_list.append(f)
+        frame_list.append(f.frame)
         stripe_counter += 1
 
     frames = xr.concat(frame_list, dim=P.dim_scan)
@@ -323,6 +325,7 @@ def make_stripe_cube():
         },
     )
     F.save_cube(cube, '../' + P.path_rel_scan + '/' + P.example_scan_name + '/' + P.cube_raw_name)
+    print(f"Generated stripe example raw cube.")
 
 def make_shift_matrix():
     """Make shift matrix and save it to disk.
@@ -464,10 +467,10 @@ def show_shift_matrix():
 
 def show_cube_examples():
     try:
-        rfl = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name)
-        desmiled_lut = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_lut)
-        desmiled_intr = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_intr)
-        ci = CubeInspector(rfl, desmiled_lut, desmiled_intr, 'reflectance')
+        rfl = F.load_cube('../' + P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name)
+        # desmiled_lut = F.load_cube('../' + P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_lut)
+        # desmiled_intr = F.load_cube('../' + P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_intr)
+        ci = CubeInspector(rfl, rfl, rfl, 'reflectance')
         ci.show()
     except FileNotFoundError as fnf:
         logging.error(fnf)
@@ -476,6 +479,17 @@ def show_cube_examples():
         logging.error(r)
         print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
+def show_raw_cube():
+    try:
+        raw = F.load_cube('../' + P.path_rel_scan + P.example_scan_name + '/' + P.cube_raw_name)
+        ci = CubeInspector(raw, raw, raw, 'dn')
+        ci.show()
+    except FileNotFoundError as fnf:
+        logging.error(fnf)
+        print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
+    except RuntimeError as r:
+        logging.error(r)
+        print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
 if __name__ == '__main__':
     # light_frame_to_spectrogram()
@@ -483,6 +497,7 @@ if __name__ == '__main__':
     # generate_frame_examples()
     # show_frame_examples()
 
-    # make_stripe_cube()
+    make_stripe_cube()
+    show_raw_cube()
 
     pass
