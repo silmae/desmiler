@@ -286,32 +286,40 @@ def make_stripe_cube():
     if not os.path.exists(distotion_smile_tilt_path + '.nc'):
         make_distorted_frame(['smile', 'tilt'])
 
-    white_area_frame = F.load_frame(distotion_smile_tilt_path)
+    white_area = F.load_frame(distotion_smile_tilt_path)
+    dark_area = white_area.copy(deep=True)
+
+    F.save_frame(white_area.frame, P.path_rel_scan + P.example_scan_name + '/' + P.ref_white_name)
+    F.save_frame(dark_area.frame, P.path_rel_scan + P.example_scan_name + '/' + P.ref_dark_name)
+    shift = F.load_shit_matrix(shift_path)
+    F.save_shift_matrix(shift, P.path_rel_scan + P.example_scan_name + '/' + P.shift_name)
+
     x_slice = slice(width_offset, width_offset + width)
     y_slice = slice(height_offset, height_offset + height)
-    white_area_frame = white_area_frame.isel({P.dim_x: x_slice,P.dim_y: y_slice})
-    white_area_frame.frame.values = np.nan_to_num(white_area_frame.frame.values)
-    white_area_frame['x'] = np.arange(0, white_area_frame.x.size) + 0.5
-    white_area_frame['y'] = np.arange(0, white_area_frame.y.size) + 0.5
-    area_shape = white_area_frame.frame.values.shape
-    dark_area_frame = white_area_frame.copy(deep=True)
-    max_pixel_val = white_area_frame.frame.max().item()
-    dark_area_frame.frame.values = np.random.uniform(0, random_noise_fac*max_pixel_val,size=area_shape)
+    white_area = white_area.isel({P.dim_x: x_slice,P.dim_y: y_slice})
+    dark_area = dark_area.isel({P.dim_x: x_slice, P.dim_y: y_slice})
+    white_area.frame.values = np.nan_to_num(white_area.frame.values)
+    white_area['x'] = np.arange(0, white_area.x.size) + 0.5
+    white_area['y'] = np.arange(0, white_area.y.size) + 0.5
+    dark_area['x'] = np.arange(0, white_area.x.size) + 0.5
+    dark_area['y'] = np.arange(0, white_area.y.size) + 0.5
+    area_shape = white_area.frame.values.shape
+    max_pixel_val = white_area.frame.max().item()
+    dark_area.frame.values = np.random.uniform(0, random_noise_fac*max_pixel_val,size=area_shape)
 
     frame_list = []
     stripe_counter = 0
     use_white = True
-    roll_max = 3
     for i in range(cube_depth):
         if stripe_counter > stripe_width-1:
             use_white = not use_white
             stripe_counter = 0
         rando = np.random.uniform(0, random_noise_fac * max_pixel_val, size=area_shape)
         if use_white:
-            f = white_area_frame.copy(deep=True)
+            f = white_area.copy(deep=True)
             f.frame.values = f.frame.values + rando
         else:
-            f = dark_area_frame.copy(deep=True)
+            f = dark_area.copy(deep=True)
             f.frame.values = rando
 
         f.coords[P.dim_scan] = i
@@ -324,7 +332,7 @@ def make_stripe_cube():
             'dn': frames,
         },
     )
-    F.save_cube(cube, '../' + P.path_rel_scan + '/' + P.example_scan_name + '/' + P.cube_raw_name)
+    F.save_cube(cube, P.path_rel_scan + '/' + P.example_scan_name + '/' + P.cube_raw_name)
     print(f"Generated stripe example raw cube.")
 
 def make_shift_matrix():
@@ -467,10 +475,10 @@ def show_shift_matrix():
 
 def show_cube_examples():
     try:
-        rfl = F.load_cube('../' + P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name)
-        # desmiled_lut = F.load_cube('../' + P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_lut)
-        # desmiled_intr = F.load_cube('../' + P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_intr)
-        ci = CubeInspector(rfl, rfl, rfl, 'reflectance')
+        rfl = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name)
+        desmiled_lut = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_lut)
+        desmiled_intr = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_intr)
+        ci = CubeInspector(rfl, desmiled_lut, desmiled_intr, 'reflectance')
         ci.show()
     except FileNotFoundError as fnf:
         logging.error(fnf)
@@ -481,7 +489,7 @@ def show_cube_examples():
 
 def show_raw_cube():
     try:
-        raw = F.load_cube('../' + P.path_rel_scan + P.example_scan_name + '/' + P.cube_raw_name)
+        raw = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_raw_name)
         ci = CubeInspector(raw, raw, raw, 'dn')
         ci.show()
     except FileNotFoundError as fnf:
