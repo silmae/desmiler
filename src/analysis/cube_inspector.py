@@ -138,7 +138,7 @@ class CubeInspector:
         self.sam_ref_x = self.y
 
         # Modes: 1 for reflectance image, 2 for false color image, 3 for spectral angle
-        self.mode = 3
+        self.mode = 1
 
         # Containers for false color images
         self.org_false = None
