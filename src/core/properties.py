@@ -2,7 +2,7 @@
 
 """
 
-path_project_root = '../'
+path_project_root = '../../'
 path_rel_scan = path_project_root + 'scans/'
 
 path_rel_default_cam_settings = path_project_root + 'camera_settings.toml'
@@ -45,7 +45,7 @@ dim_scan = 'scan_index'
 
 ########### Example related #############
 
-path_example_frames = '../' + path_project_root + 'examples/'
+path_example_frames =  path_project_root + 'examples/'
 example_scan_name = 'example_scan'
 example_scan_control_content =\
 """
