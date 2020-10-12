@@ -248,7 +248,8 @@ class ScanningSession:
         else:
             white =  self.crop_to_size(self.white.frame)
 
-        rfl = org
+        rfl = org.copy(deep=True)
+        org.close()
         # # Uncomment to drop lowest pixel values to zero
         # # zeroLessThan = 40
         # # rfl = org.where(org.dn_dark_corrected > zeroLessThan, 0.0)
