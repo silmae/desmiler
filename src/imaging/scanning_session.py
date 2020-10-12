@@ -19,16 +19,16 @@ Order:
 
 """
 
+import logging
+import toml
+import numpy as np
 import os
 
 from core import properties as P
 from utilities import file_handling as F
 from core.camera_interface import CameraInterface
-import logging
-import toml
-import numpy as np
-
 from core import smile_correction as sc
+from xarray import Dataset
 
 import analysis.cube_inspector as ci
 
@@ -48,7 +48,8 @@ class ScanningSession:
         self.light_path = os.path.abspath(self.session_root + P.ref_light_name + '.nc')
         self.cube_raw_path = os.path.abspath(self.session_root + P.cube_raw_name + '.nc')
         self.cube_rfl_path = os.path.abspath(self.session_root + P.cube_reflectance_name + '.nc')
-        self.cube_desmiled_path = os.path.abspath(self.session_root + P.cube_desmiled_name + '.nc')
+        self.cube_desmiled_lut_path = os.path.abspath(self.session_root + P.cube_desmiled_lut + '.nc')
+        self.cube_desmiled_intr_path = os.path.abspath(self.session_root + P.cube_desmiled_intr + '.nc')
 
         self.dark = None
         self.white = None
@@ -214,7 +215,7 @@ class ScanningSession:
 
             print(f"Default control file created.")
 
-    def make_reflectance_cube(self):
+    def make_reflectance_cube(self) -> Dataset:
         """ Makes a reflectance cube out of a raw cube.
 
         Loads the cube if not given.
@@ -259,14 +260,17 @@ class ScanningSession:
         print(f"Saving reflectance cube to {self.cube_rfl_path}...", end=' ')
         F.save_cube(rfl, self.cube_rfl_path)
         print(f"done")
+        return rfl
 
-    def desmile_cube(self, source_cube=None, shift_method=0):
+    def desmile_cube(self, source_cube=None, shift_method=0) -> Dataset:
         """ Desmile a reflectance cube with lut of intr shifts and save and return the result."""
 
         if shift_method == 0:
             cube_type = 'lut'
+            save_path = self.cube_desmiled_lut_path
         elif shift_method == 1:
             cube_type = 'intr'
+            save_path = self.cube_desmiled_intr_path
 
         if source_cube is None:
             rfl = F.load_cube(self.cube_rfl_path)
@@ -274,14 +278,15 @@ class ScanningSession:
             rfl = source_cube
 
         s = F.load_shit_matrix(self.session_root + P.shift_name)
-        # s = self.crop_to_size(s)
 
         print(f"Desmiling {cube_type} shifts...", end=' ')
-        desmiled = sc.apply_shift_matrix(rfl, s, method=shift_method, target_is_cube=True)
+        desmiled = rfl.copy(deep=True)
+        del rfl
+        desmiled = sc.apply_shift_matrix(desmiled, s, method=shift_method, target_is_cube=True)
         print(f"done")
 
-        print(f"Saving desmiled cube to {self.cube_desmiled_path}...", end=' ')
-        F.save_cube(desmiled, self.cube_desmiled_path)
+        print(f"Saving desmiled cube to {save_path}...", end=' ')
+        F.save_cube(desmiled, save_path)
         print(f"done")
         return desmiled
 
