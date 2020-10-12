@@ -452,7 +452,7 @@ def generate_frame_examples():
 
 def generate_all_examples():
     check_dirs()
-    generate_cube_examples()
+    generate_frame_examples()
     generate_cube_examples()
 
 def check_dirs():
