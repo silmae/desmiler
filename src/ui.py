@@ -7,15 +7,12 @@ Console UI for controlling various funktionalities.
 
 from imaging.scanning_session import ScanningSession
 import imaging.scanning_session as scanning_session
-from core.camera_interface import CameraInterface
 import analysis.frame_inspector as frame_inspector
 from core import properties as P
 from utilities import file_handling as F
 from imaging.preview import Preview
 
-import numpy as np
-import os
-from analysis.cube_inspector import CubeInspector
+import synthetic_data as synthetic
 
 import logging
 
@@ -148,19 +145,26 @@ class UI:
             # frame_inspector.plot_frame(frame)
             # frame_inspector.plot_frame_spectra(log_frame)
 
+    def generate_examples(self):
+        synthetic.generate_all_examples()
+
+    def show_examples(self):
+        synthetic.show_frame_examples()
+        synthetic.show_cube_examples()
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
     ui.start_session(P.example_scan_name)
-    sc = ui.sc
+    # sc = ui.sc
     # sc.make_reflectance_cube()
     # desmiled = sc.desmile_cube()
 
-    raw = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name + '.nc'))
-    desmiled = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_name + '.nc'))
-    ci = CubeInspector(raw, desmiled, desmiled, 'reflectance')
-    ci.show()
+    # raw = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name + '.nc'))
+    # desmiled = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_lut + '.nc'))
+    # ci = CubeInspector(raw, desmiled, desmiled, 'reflectance')
+    # ci.show()
 
     # ui.run_scan()
     # ui.crop(200,100,150,300)
