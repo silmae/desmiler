@@ -56,3 +56,10 @@ class SpectralLine:
         self.circ_cntr_x, self.circ_cntr_y, self.circ_r,_ = cf.LSF(x,y)
         self.line_a, self.line_b = cf.line_fit(x,y)
         self.tilt_angle_degree_abs = 90 - abs(math.atan(self.line_a) * 57.2957795)
+        a_tan = math.degrees(-math.atan(self.line_a))
+        self.tilt = math.copysign(90 - abs(a_tan), a_tan)
+
+        # Parabolic fit to estimate curvature
+        p0 = [1 / (2 * self.circ_r), 0.0, self.location]
+        a, _, _ = cf.parabolicFit(x,y,p0)
+        self.curvature = 2 * a
