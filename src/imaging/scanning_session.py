@@ -208,11 +208,10 @@ class ScanningSession:
 
         if not os.path.exists(abs_path):
             print(f"Creating default control file to '{abs_path}'", end='')
-            control_toml_s = toml.loads(P.example_scan_control_content)
-            self.control = toml.loads(control_toml_s)
+            self.control = toml.loads(P.example_scan_control_content)
 
             with open(abs_path, "w") as file:
-                toml.dump(control_toml_s, file)
+                toml.dump(self.control, file)
 
             print(f"Default control file created.")
 
