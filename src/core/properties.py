@@ -43,23 +43,48 @@ dim_x = 'x'
 dim_y = 'y'
 dim_scan = 'scan_index'
 
+########### Metadata keys   #############
+
+meta_key_sl_count = 'sl_count'
+meta_key_location = 'location'
+meta_key_tilt = 'tilt'
+meta_key_curvature = 'curvatures'
+meta_key_sl_X = 'sl_X'
+meta_key_sl_Y = 'sl_Y'
+
+
+
 ########### Example related #############
 
 path_example_frames =  path_project_root + 'examples/'
 example_scan_name = 'example_scan'
-example_scan_control_content =\
-"""
-[scan_settings]
-	scanning_speed = 0.2
-	width 			= 2500
-	width_offset 	= 500
-	height			= 760
-	height_offset	= 975
 
-[spectral_lines]
+ctrl_scan_settings = 'scan_settings'
+ctrl_scanning_speed = 'scanning_speed'
+ctrl_width = 'width'
+ctrl_width_offset = 'width_offset'
+ctrl_height = 'height'
+ctrl_height_offset = 'height_offset'
+
+ctrl_spectral_lines = 'spectral_lines'
+ctrl_positions = 'positions'
+ctrl_wavelengths = 'wavelengths'
+ctrl_window_width = 'window_width'
+ctrl_peak_width = 'peak_width'
+
+example_scan_control_content =\
+f"""
+[{ctrl_scan_settings}]
+	{ctrl_scanning_speed} = 0.2
+	{ctrl_width} 			= 2500
+	{ctrl_width_offset} 	= 500
+	{ctrl_height}			= 760
+	{ctrl_height_offset}	= 975
+
+[{ctrl_spectral_lines}]
     # x-coordinates in full sensor coordinates (not cropped ones). 
-	positions 		= [1130, 1260, 1480, 2020]
-	wavelengths 	= [327, 380, 521]
-	window_width 	= 25
-	peak_width 		= 5
+	{ctrl_positions} 		= [1130, 1260, 1480, 2020]
+	{ctrl_wavelengths} 	= [327, 380, 521]
+	{ctrl_window_width} 	= 25
+	{ctrl_peak_width} 		= 5
 """
