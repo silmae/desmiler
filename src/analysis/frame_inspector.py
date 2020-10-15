@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from utilities import plotting
+import core.properties as P
 
 def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=None, desmiled_bandpass=None, window_name=''):
     """Plot spectrum of a frame from top, middle, and bottom.
@@ -28,19 +29,19 @@ def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=No
     """
 
     if desmiled_frame is not None:
-        if original_frame.x.size != desmiled_frame.x.size:
+        if original_frame[P.dim_x].size != desmiled_frame[P.dim_x].size:
             raise ValueError("Original frame and desmiled frame width is not the same.")
-        if original_frame.y.size != desmiled_frame.y.size:
+        if original_frame[P.dim_y].size != desmiled_frame[P.dim_y].size:
             raise ValueError("Original frame and desmiled frame height is not the same.")
     if original_bandpass is not None:
-        if original_frame.x.size != len(original_bandpass[0]):
+        if original_frame[P.dim_x].size != len(original_bandpass[0]):
             raise ValueError("Original frame's width and bandpass list's length is not the same.")
     if desmiled_bandpass is not None:
-        if original_frame.x.size != len(desmiled_bandpass[0]):
+        if original_frame[P.dim_x].size != len(desmiled_bandpass[0]):
             raise ValueError("Original frame's width and bandpass list's length is not the same.")
 
-    w = original_frame.x.size
-    h = original_frame.y.size
+    w = original_frame[P.dim_x].size
+    h = original_frame[P.dim_y].size
     lw = 1
 
     xData = np.arange(w)
@@ -59,16 +60,16 @@ def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=No
 
     if desmiled_frame is not None:
         ax[1].set_title("Desmiled")            
-        ax[1].plot(xData, desmiled_frame.isel(y=int(2*h/3)).values,linewidth=lw,color='c')
-        ax[1].plot(xData, desmiled_frame.isel(y=int(h/2)).values,linewidth=lw,color='g')
-        ax[1].plot(xData, desmiled_frame.isel(y=int(h/3)).values,linewidth=lw,color='y')
+        ax[1].plot(xData, desmiled_frame.isel({P.dim_x:int(2*h/3)}).values,linewidth=lw,color='c')
+        ax[1].plot(xData, desmiled_frame.isel({P.dim_x:int(h/2)}).values,linewidth=lw,color='g')
+        ax[1].plot(xData, desmiled_frame.isel({P.dim_x:int(h/3)}).values,linewidth=lw,color='y')
         if desmiled_bandpass is not None:
             ax[1].plot(xData, desmiled_bandpass[0],linewidth=lw,color='b')
             ax[1].plot(xData, desmiled_bandpass[1],linewidth=lw,color='r')
     plt.show()
 
-def plot_frame(frame, spectral_lines=None, plot_fit_points=False, plot_circ_fit=False, 
-                plot_line_fit=False, window_name='Frame plot'):
+def plot_frame(source, spectral_lines=None, plot_fit_points=False, plot_circ_fit=False,
+               plot_line_fit=False, window_name='Frame plot'):
     """Plots the given frame with matplotlib.
 
     If spectral lines are given, they can be plotted on top of the frame with a 
@@ -76,9 +77,9 @@ def plot_frame(frame, spectral_lines=None, plot_fit_points=False, plot_circ_fit=
 
     Parameters
     ----------
-    frame : DataArray
-        Frame to be plotted.
-   
+    source : DataArray or Dataset
+        Frame to be plotted. Can be a full dataset containing the frame and optional
+        metadata, or just the frame as a DataArray.
     spectral_lines : list of SpectralLine objects
         If given, frame is overlayed with spectral lines.
     plot_fit_points:
@@ -92,7 +93,14 @@ def plot_frame(frame, spectral_lines=None, plot_fit_points=False, plot_circ_fit=
         if needed.    
     """
 
-    height = frame.y.size
+    frame_ds = None
+    if source[P.naming_frame_data] is not None:
+        frame = source[P.naming_frame_data]
+        frame_ds = source
+    else:
+        frame = source
+
+    height = source[P.dim_y].size
 
     _,ax = plt.subplots(num=window_name,nrows=2, figsize=plotting.get_figure_size())
     ax[0].imshow(frame, origin='lower')
@@ -112,9 +120,19 @@ def plot_frame(frame, spectral_lines=None, plot_fit_points=False, plot_circ_fit=
                 liny = sl.line_a*sl.x+sl.line_b
                 ax[0].plot(sl.x, liny, linewidth=1,color=color)
 
+    if frame_ds is not None and len(frame_ds.attrs) >= 1:
+        print(f"Frame metadata from Dataset:")
+        for key,val in frame_ds.attrs.items():
+            print(f"\t{key} : \t{val}")
+
+    if len(frame.attrs) >= 1:
+        print(f"Frame metadata from DataArray:")
+        for key,val in frame.attrs.items():
+            print(f"\t{key} : \t{val}")
+
     ### Spectrogram
     row_selection = np.linspace(height * 0.1, height * 0.9, num=3, dtype=np.int)
-    rows = frame.isel({'y':row_selection}).values
+    rows = frame.isel({P.dim_y:row_selection}).values
     rows = rows.transpose()
     ax[1].plot(rows)
 
