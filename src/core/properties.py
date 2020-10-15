@@ -35,6 +35,8 @@ dwl_default_method = 'mean'
 # A single frame dataset uses this name to save the frame.
 naming_frame_data = 'frame'
 naming_cube_data = 'dn'
+naming_dark_corrected = 'dark_corrected'
+naming_reflectance = 'reflectance'
 
 ########### Dimension names #############
 # Not iplemented everywhere
@@ -42,6 +44,9 @@ naming_cube_data = 'dn'
 dim_x = 'x'
 dim_y = 'y'
 dim_scan = 'scan_index'
+
+dim_order_frame = dim_y,dim_x
+dim_order_cube = dim_scan,dim_y,dim_x
 
 ########### Metadata keys   #############
 

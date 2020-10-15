@@ -504,7 +504,7 @@ def show_me(path, window_name=None):
     if dim_count == 1:
         plt.plot(frame.data)
     else:
-        frame_inspector.plot_frame(frame, window_name=window_name)
+        frame_inspector.plot_frame(source, window_name=window_name)
 
     plt.show()
 
@@ -596,13 +596,15 @@ if __name__ == '__main__':
 
     # generate_frame_examples()
     # generate_cube_examples()
-
+    session = ScanningSession(P.example_scan_name)
+    session.make_reflectance_cube()
+    session.desmile_cube(shift_method=0)
     # generate_all_examples()
 
     # show_frame_examples()
 
     # show_raw_cube()
-    # show_cube_examples()
+    show_cube_examples()
     # show_shift_matrix()
 
-    show_smiled_tilted_frame()
+    # show_smiled_tilted_frame()

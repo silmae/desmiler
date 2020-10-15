@@ -23,12 +23,15 @@ import logging
 import toml
 import numpy as np
 import os
+from xarray import Dataset
 
 from core import properties as P
 from utilities import file_handling as F
 from core.camera_interface import CameraInterface
 from core import smile_correction as sc
-from xarray import Dataset
+import core.frame_manipulation as fm
+import core.cube_manipulation as cm
+
 
 import analysis.cube_inspector as ci
 
@@ -216,47 +219,10 @@ class ScanningSession:
             print(f"Default control file created.")
 
     def make_reflectance_cube(self) -> Dataset:
-        """ Makes a reflectance cube out of a raw cube.
-
-        Loads the cube if not given.
-
-        Resulting cube is saved into scans/{scan_name}/{scan_name}_cube_rfl.nc and
-        returned as xarray Dataset.
-
-        TODO move this method to own file once working
-        """
+        """ Makes a reflectance cube out of a raw cube."""
 
         org = F.load_cube(self.cube_raw_path)
-        if self.dark is not None:
-            dark_frame = self.crop_to_size(self.dark.frame)
-            print(f"Subtracting dark frame...", end=' ')
-            org['dn_dark_corrected'] = ((P.dim_scan, P.dim_y, P.dim_x),
-                (org[P.naming_cube_data].values > dark_frame.values)
-                                        * (org[P.naming_cube_data].values - dark_frame.values).astype(np.float32))
-            org = org.drop(P.naming_cube_data)
-            print(f"done")
-
-        print(f"Dividing by white frame...", end=' ')
-        # Y coordinates of the reference white (teflon block)
-        # Along scan white reference area.
-        use_area_from_cube = False
-        if use_area_from_cube:
-            white_ref_scan_slice = slice(410, 490)
-            # Along scan white reference area.
-            # white = (org.dn_dark_corrected.isel({d_along_scan: white_ref_scan_slice})).mean(dim=(d_along_scan)).astype(
-            #     np.float32)
-        else:
-            white =  self.crop_to_size(self.white.frame)
-
-        rfl = org.copy(deep=True)
-        org.close()
-        # # Uncomment to drop lowest pixel values to zero
-        # # zeroLessThan = 40
-        # # rfl = org.where(org.dn_dark_corrected > zeroLessThan, 0.0)
-        rfl['reflectance'] = ((P.dim_scan, P.dim_y, P.dim_x), (rfl['dn_dark_corrected'] / white).astype(np.float32))
-        rfl['reflectance'].values = np.nan_to_num(rfl['reflectance'].values).astype(np.float32)
-        rfl = rfl.drop('dn_dark_corrected')
-        print(f"done")
+        rfl = cm.make_reflectance_cube(org, self.dark, self.white, self.control)
 
         print(f"Saving reflectance cube to {self.cube_rfl_path}...", end=' ')
         F.save_cube(rfl, self.cube_rfl_path)
@@ -290,19 +256,6 @@ class ScanningSession:
         F.save_cube(desmiled, save_path)
         print(f"done")
         return desmiled
-
-    def crop_to_size(self, frame):
-        width = self.control['scan_settings']['width']
-        width_offset = self.control['scan_settings']['width_offset']
-        height = self.control['scan_settings']['height']
-        height_offset = self.control['scan_settings']['height_offset']
-        frame = frame.isel({P.dim_x: slice(width_offset, width_offset + width),
-                                  P.dim_y: slice(height_offset, height_offset + height)})
-
-        frame['x'] = np.arange(0, frame.x.size) + 0.5
-        frame['y'] = np.arange(0, frame.y.size) + 0.5
-        return frame
-
 
 def create_example_scan():
     """Creates an example if does not exist."""
