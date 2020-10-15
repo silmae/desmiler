@@ -118,6 +118,7 @@ def plot_frame(source, spectral_lines=None, plot_fit_points=False, plot_circ_fit
                 ax[0].plot(sl.x,sl.y,'.',linewidth=1,color=color)
             if plot_line_fit:
                 liny = sl.line_a*sl.x+sl.line_b
+                liny = np.clip(liny, 0, frame[P.dim_y].size)
                 ax[0].plot(sl.x, liny, linewidth=1,color=color)
 
     if frame_ds is not None and len(frame_ds.attrs) >= 1:
