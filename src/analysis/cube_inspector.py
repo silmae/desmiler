@@ -120,14 +120,15 @@ class CubeInspector:
 
     def __init__(self, org, lut, intr, viewable):
         super().__init__()
-        print(f"Loading cubes. This might take a while...", end=' ', flush=True)
         self.org = org
         self.lut = lut
         self.intr = intr
         self.viewable = viewable
         # Interpolative shift may cause very small negative values, which should be clipped. 
         # self.intr[self.viewable].values = self.intr[self.viewable].values.clip(min=0.0).astype(np.float32)
-        print(f"done")
+
+        self.width_image = self.org[self.viewable][P.dim_y].size
+        self.height_image = self.org[self.viewable][P.dim_scan].size
 
         # Selected pixel and band in CUBE's coordinates. show() deals with the 
         # transformation from plot coordinates.
@@ -163,8 +164,9 @@ class CubeInspector:
         self.color_pixel_selection = 'violet'
                 
         # Boundaries of RGB boxes used for false color calculations.
-        self.rgb_y_chunk = slice(530,590)
-        self.rgb_x_chunks = [slice(195,245), slice(265,315), slice(335,385)]
+        lins = np.linspace(0, self.height_image, num=13, dtype=np.int)
+        self.rgb_horizontal_chunk = slice(int(self.width_image/10), self.width_image - int(self.width_image/10))
+        self.rgb_vertical_chunks = [slice(lins[1], lins[3]), slice(lins[5], lins[7]), slice(lins[9], lins[11])]
         
         # Images to be plotted on update. Active mode will stuff images in 
         # this list, which are then drawn over the old ones.
@@ -175,13 +177,17 @@ class CubeInspector:
 
         # Filter out noisy ends of the spectrum in cosine maps.
         self.spectral_filter_max = self.org[self.viewable][P.dim_x].size
-        self.spectral_filter = slice(0, self.spectral_filter_max)
+        # Filter one third from the middle of the spectrum by default.
+        lin_spectr = np.linspace(0, self.spectral_filter_max, 4, dtype=np.int)
+        self.spectral_filter = slice(lin_spectr[1], lin_spectr[2])
         # How much the spectral filter is moved to left or right.        
         self.spectral_filter_step = 100
 
         # Cosine boxes
-        self.sam_window_start = [int(self.y/2)-int(self.y/4),int(self.idx/2)-int(self.idx/4)]
-        self.sam_window_end = [int(self.y/2)+int(self.y/4),int(self.idx/2)+int(self.idx/4)]
+        self.sam_window_start = \
+            [int(self.width_image/2)-int(self.width_image/4),int(self.height_image/2)-int(self.height_image/4)]
+        self.sam_window_end = \
+            [int(self.width_image/2)+int(self.width_image/4),int(self.height_image/2)+int(self.height_image/4)]
         self.sam_window_start_sug = [self.sam_window_start[0], self.sam_window_start[1]]
         self.sam_window_corner_given = False
 
@@ -421,8 +427,8 @@ class CubeInspector:
             self.intr[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[2])
 
             # Reference color spectra
-            for i,_ in enumerate(self.rgb_x_chunks):
-                rgb_chunk = self.org[self.viewable].isel({P.dim_y:self.rgb_y_chunk, P.dim_scan:self.rgb_x_chunks[i]}).mean(dim=(P.dim_scan,P.dim_y))
+            for i,_ in enumerate(self.rgb_vertical_chunks):
+                rgb_chunk = self.org[self.viewable].isel({P.dim_y:self.rgb_horizontal_chunk, P.dim_scan:self.rgb_vertical_chunks[i]}).mean(dim=(P.dim_scan, P.dim_y))
                 rgb_chunk.plot(ax=self.ax[0,0], color=self.colors_rbg[i])
 
             self.ax[0,0].set_title('Spectrograms')
@@ -465,9 +471,9 @@ class CubeInspector:
         self.decorations_box = []
 
         if self.mode == 1 or self.mode == 2:
-            for i,rgbXChunk in enumerate(self.rgb_x_chunks):
-                bottomLeftCorner = (self.rgb_y_chunk.start, rgbXChunk.start)
-                w = self.rgb_y_chunk.stop-self.rgb_y_chunk.start
+            for i,rgbXChunk in enumerate(self.rgb_vertical_chunks):
+                bottomLeftCorner = (self.rgb_horizontal_chunk.start, rgbXChunk.start)
+                w = self.rgb_horizontal_chunk.stop - self.rgb_horizontal_chunk.start
                 h = rgbXChunk.stop-rgbXChunk.start
                 rgbBox = patches.Rectangle(bottomLeftCorner, w, h, edgecolor=self.colors_rbg[i],facecolor='none', linewidth=1)
                 self.decorations_box.append(rgbBox)
