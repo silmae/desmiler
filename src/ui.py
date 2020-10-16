@@ -6,13 +6,13 @@ Console UI for controlling various funktionalities.
 
 
 from imaging.scanning_session import ScanningSession
-import imaging.scanning_session as scanning_session
+from imaging import scanning_session as scanning_session
 import analysis.frame_inspector as frame_inspector
 from core import properties as P
 from utilities import file_handling as F
 from imaging.preview import Preview
 
-import utilities.synthetic_data as synthetic
+import synthetic_data as synthetic
 
 import logging
 
@@ -156,8 +156,8 @@ class UI:
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
-    ui.start_session(P.example_scan_name)
-    ui.inspect_light()
+    # ui.start_session(P.example_scan_name)
+    # ui.inspect_light()
     # sc = ui.sc
     # sc.make_reflectance_cube()
     # desmiled = sc.desmile_cube()
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     # ui.shoot_white()
     # ui.shoot_light()
 
-    # ui.start_freeform_session()
+    ui.start_freeform_session()
     # ui.inspect_light()
 
     # ui.start_preview()

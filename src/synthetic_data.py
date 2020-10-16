@@ -1,12 +1,9 @@
 import utilities.file_handling as F
 import core.properties as P
 import os
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from xarray import Dataset
-from xarray import DataArray
 import datetime as dt
 import toml
 import math
@@ -596,9 +593,6 @@ if __name__ == '__main__':
 
     # generate_frame_examples()
     # generate_cube_examples()
-    session = ScanningSession(P.example_scan_name)
-    session.make_reflectance_cube()
-    session.desmile_cube(shift_method=0)
     # generate_all_examples()
 
     # show_frame_examples()

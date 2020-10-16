@@ -2,7 +2,7 @@
 
 """
 
-path_project_root = '../../'
+path_project_root = '../'
 path_rel_scan = path_project_root + 'scans/'
 
 path_rel_default_cam_settings = path_project_root + 'camera_settings.toml'
@@ -64,8 +64,17 @@ meta_key_sl_Y = 'sl_Y'
 path_example_frames =  path_project_root + 'examples/'
 example_scan_name = 'example_scan'
 
+accepted_length_units = ['mm', 'deg']
+accepted_speed_units = ['mm_per_s', 'deg_per_s']
+
 ctrl_scan_settings = 'scan_settings'
-ctrl_scanning_speed = 'scanning_speed'
+ctrl_scanning_speed_value   = 'scanning_speed_value'
+ctrl_scanning_speed_unit    = 'scanning_speed_unit'
+ctrl_scanning_length_value  = 'scanning_length_value'
+ctrl_scanning_length_unit   = 'scanning_length_unit'
+ctrl_accepted_length_units  = 'accepted_length_units'
+ctrl_accepted_speed_units   = 'accepted_speed_units'
+
 ctrl_width = 'width'
 ctrl_width_offset = 'width_offset'
 ctrl_height = 'height'
@@ -80,7 +89,12 @@ ctrl_peak_width = 'peak_width'
 example_scan_control_content =\
 f"""
 [{ctrl_scan_settings}]
-	{ctrl_scanning_speed} = 0.2
+    {ctrl_scanning_speed_value  } = 'scanning_speed_value'
+    {ctrl_scanning_speed_unit   } = 'scanning_speed_unit'
+    {ctrl_scanning_length_value } = 'scanning_length_value'
+    {ctrl_scanning_length_unit  } = 'scanning_length_unit'
+    {ctrl_accepted_length_units } = {accepted_length_units}
+    {ctrl_accepted_speed_units  } = {accepted_speed_units} 
 	{ctrl_width} 			= 2500
 	{ctrl_width_offset} 	= 500
 	{ctrl_height}			= 760

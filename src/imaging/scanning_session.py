@@ -229,6 +229,102 @@ class ScanningSession:
             self._init_cami()
             # TODO implement
 
+    def sweep(self, length=0.5, vel=0.01, count=None, dryRun=False, fileName=None):
+        """Capture eithr a linear or angular sweep.
+
+        Returns the resulting spectral cube, and saves it if a fileName is given.
+        Prints a countdown before recording is started.
+        Dark frame is not substracted and desmiling is not performed.
+
+        Parameters
+        ----------
+            length : float
+                Total travel distance of the camera in meters or angle in degrees.
+            vel : float
+                Velocity or angular velocity in meters per second or in degrees per second.
+            count : int, optional, default None
+                How many frames are captured. If none given, height of a frame is used
+                resulting in aspect ratio 1:1.
+            dryRun : bool, default False
+                If True, actual frame capturing is not done, but parameters for recording
+                are printed.
+            fileName : str, default None
+                Save resulting spectral cube with this name. Handle to file is closed.
+                If None, the result is not saved.
+        Returns
+        -------
+            DataSet
+                Resulting dataset is returned.
+        """
+
+        print("Trying to do a sweep. Implement me please!")
+
+        # if not self._cam.is_acquiring():
+        #     self._cam.start_acquisition()
+        #
+        # # Make x-y-ratio 1:1 as default for now
+        # if count is None:
+        #     count = self._cam['Height'].value
+        #
+        # sweepTime = length / vel
+        # print(f"Total sweep time: {sweepTime} s")
+        # # Frame time in micro seconds
+        # frameTime = 1000000 * (sweepTime / count)
+        # print(f"Frame time {frameTime} us and exposure time {self._cam['ExposureTime'].value} us")
+        #
+        # if not dryRun:
+        #     # Save consecutive frames into a list.
+        #     frameList = []
+        #
+        #     print(f"Shooting {count} frames...", end=' ')
+        #     # Countdown
+        #     for i in range(3):
+        #         print(3 - i, end=', ')
+        #         time.sleep(0.5)
+        #     print("Go!")
+        #
+        #     sweepStartTime = time.perf_counter_ns()
+        #     for i in range(count):
+        #         tStart = time.perf_counter_ns()
+        #         f = self._cam.get_frame()
+        #         # f = ft.subtractDark(frame=f, dark=self._darkFrame)
+        #         f.coords['index'] = i
+        #         frameList.append(f)
+        #
+        #         # Whole processing time of a single frame in micro seconds
+        #         duration_us = (time.perf_counter_ns() - tStart) / 1000
+        #         tw = frameTime - duration_us
+        #         # print(f"Should wait for {tw} microsecs.")
+        #         if tw > 0:
+        #             time.sleep(tw / 1000000)  # in seconds
+        #
+        #     print(f"..done. Total sweep duration {((time.perf_counter_ns() - sweepStartTime) / 1000000000):.3f} s.")
+        #     print("Starting to process...", end=' ', flush=True)
+        #     tProsStart = time.perf_counter_ns()
+        #     frames = xr.concat(frameList, dim='index')
+        #     ds = xr.Dataset(
+        #         data_vars={
+        #             'dn': frames,
+        #             'x_shift': self._desmileArray,
+        #         },
+        #     )
+
+            # NOTE desmiling should be done separately so that the original raw cube stays intact
+            # ds['desmiled_x'] = ds.x_shift + ds.x
+            # ds.coords['new_x'] = np.linspace(ds.desmiled_x.min(), ds.desmiled_x.max(), 1000)
+            # ds = ds.groupby('y').apply(self.desmile_row)
+            # duration_s = (time.perf_counter_ns() - tProsStart) / 1000000000
+            # print(f"..done. Elapsed time {duration_s} s")
+
+            # if fileName is not None:
+            #     path = f"cubes/{fileName}.nc"
+            #     print(f"Saving cube to path '{path}'...", end=' ')
+            #     ds.to_netcdf(os.path.normpath(path))
+            #     ds.close()
+            #     print("done.")
+            #
+            # return ds
+
     def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
         """TODO this may be removed... i think. The control file should take care of cropping."""
 
@@ -320,7 +416,7 @@ class ScanningSession:
 
 def create_example_scan():
     """Creates an example if does not exist."""
-
+    # TODO if does not exist
     example_sc = ScanningSession(P.example_scan_name)
     example_sc.generate_default_scan_control()
 
