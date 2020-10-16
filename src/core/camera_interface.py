@@ -36,39 +36,106 @@ from utilities import numeric as N
 from camazing.feature_types import AccessModeError
 from genicam2.genapi import OutOfRangeException
 
+
+cti_path = 'C:/Program Files/MATRIX VISION/mvIMPACT Acquire/bin/x64/mvGenTLProducer.cti'
+
 class CameraInterface:
-
-    """
-    TODO should do a setting dump and load possibility for scanning sessions?
-
-    """
 
     # Should not be used directly unless it can't be avoided.
     _cam = None
 
     def __init__(self):
-        print(f"Initializing camera interface")
-        self._initCam()
+        """Initializes the camera.
+
+        Assumes only one camera is connected to the machine so the first one
+        in camazing's CameraList will be used.
+
+        Camera settings are loaded from 'camera_settings.toml' (top level directory).
+
+        Logs and reraises any errors raised by camazing.
+
+        Raises
+        ------
+        RuntimeError
+            If no camera is connected to the machine.
+        """
+
+        logging.debug(f"Initializing camera interface")
+
+        try:
+            cameras = CameraList(cti_path)
+        except:
+            logging.fatal(f"Camera list could not be initialized. Make sure that cti_path in "
+                          f"camera_interfase.py points to a correct file. If you don't know what this "
+                          f"means, read documentation in core/camera_interfase.py.")
+            raise
+
+        if len(cameras) < 1:
+            raise RuntimeError("Could not find the camera (cameralist length 0). "
+                               "Make sure the camera is connected to the machine and the USB cable is "
+                               "properly set. Camera could not be initialized.")
+
+        self._cam = cameras[0]
+
+        try:
+            logging.debug("Initializing camera...")
+            self._cam.initialize()
+            logging.debug("done")
+        except RuntimeError as re:
+            logging.error(re)
+            raise
+        except FileNotFoundError as fnf:
+            logging.error(fnf)
+            raise
+        except Exception:
+            logging.error("Could not initialize the camera. You may have another instance using the camera.")
+            raise
+
+        # Read camera settings from a file.
+        abs_path = P.path_rel_default_cam_settings
+        _, errors = self._cam.load_config_from_file(abs_path)
+
+        if len(errors) != 0:
+            logging.warning(f"Errors provided by camazing when loading settings from path {abs_path}:")
+            for e in enumerate(errors):
+                logging.warning(f"\t{e}")
 
     def __del__(self):
+        """Calls close() for cleanup."""
+
+        self.close()
+
+    def close(self):
+        """Stop acquisition and delete camera."""
+
         if self._cam is not None:
             if self._cam.is_initialized():
                 self._cam.stop_acquisition()
-        del self._cam
+            del self._cam
 
     def turn_on(self):
+        """Turn the camera on to get frames out of it. """
+
         logging.debug("Turning camera on.")
         self._cam.start_acquisition()
 
     def turn_off(self):
+        """Turn the camera off. """
+
         logging.debug("Turning camera off.")
         self._cam.stop_acquisition()
 
     def is_on(self):
+        """Returns true if camera state is 'acquiring'."""
+
         return self._cam.is_acquiring()
 
     def get_frame(self) -> DataArray:
-        """Rapidly acquire a frame without any checks or options."""
+        """Rapidly acquire a frame without any checks or options.
+
+        Use this with scanning and live feed. Use get_frame_opt() for mean or median frames.
+        Make sure camera is on with is_on() method.
+        """
 
         return self._cam.get_frame()
 
@@ -83,7 +150,7 @@ class CameraInterface:
             If given, the mean of 'mean' consecutive frames is returned. If count == 1
             this is the same as get_frame().
         method: str, default = 'mean'
-            Either mean or median of count consecutive frames.
+            Either 'mean' or 'median' of count consecutive frames.
 
         Returns
         -------
@@ -120,6 +187,9 @@ class CameraInterface:
 
     def exposure(self, value=None) -> int:
         """Set or print exposure"""
+
+        # FIXME always return the value from camera for consistency
+
         if value is None:
             return self._cam['ExposureTime'].value
         else:
@@ -127,12 +197,14 @@ class CameraInterface:
 
     def gain(self, value=None) -> int:
         """Set or print gain"""
+
         if value is None:
             return self._cam['Gain'].value
         else:
             self._set_camera_feature('Gain', value)
 
     def width(self, value=None) -> int:
+
         """Set or print width"""
         if value is None:
             return self._cam['Width'].value
@@ -140,6 +212,7 @@ class CameraInterface:
             self._set_camera_feature('Width', value)
 
     def width_offset(self, value=None) -> int:
+
         """Set or print width_offset"""
         if value is None:
             return self._cam['OffsetX'].value
@@ -173,8 +246,8 @@ class CameraInterface:
 
         Returns
         -------
-        old_vals, new_vals
-        Both are 4-tuples containing (width, width_offset, height, height_offset)
+        (old_vals, new_vals)
+            (old_vals, new_vals) Both are 4-tuples containing (width, width_offset, height, height_offset)
         """
 
         was_acquiring = self._cam.is_acquiring()
@@ -234,47 +307,16 @@ class CameraInterface:
         return old_vals, new_vals
 
     def get_crop_meta_dict(self):
+        """Returns current camera cropping as a dictionary.
+
+        TODO remove? is this really needed that much?
+        """
+
         w = self.width()
         wo = self.width_offset()
         h = self.height()
         ho = self.height_offset()
         return {'Width':w, 'OffsetX':wo, 'Height':h, 'OffsetY':ho}
-
-    def _initCam(self):
-        """Initializes the camera.
-
-        Assumes only one camera is connected to the machine so the first one
-        in camazing's CameraList will be used.
-
-        Camera settings are loaded from 'camera_settings.toml'
-
-        """
-
-        cameras = CameraList('C:/Program Files/MATRIX VISION/mvIMPACT Acquire/bin/x64/mvGenTLProducer.cti')
-
-        if len(cameras) < 1:
-            raise RuntimeError("Could not find the camera. Camera could not be initialized.")
-
-        self._cam = cameras[0]
-
-        try:
-            logging.info("Initializing camera...")
-            self._cam.initialize()
-            logging.info("done")
-        except RuntimeError as re:
-            raise RuntimeError("Could not initialize the camera. Runtime error.") from re
-        except FileNotFoundError as fnf:
-            raise RuntimeError("Could not initialize the camera. FileNotFoundError.") from fnf
-        except Exception:
-            raise RuntimeError("Could not initialize the camera. You may have another instance using the camera.")
-
-        # Read camera settings from a file.
-        _, errors = self._cam.load_config_from_file(P.path_rel_default_cam_settings)
-
-        if len(errors) != 0:
-            logging.warning(f"Errors provided by camazing when loading settings from path {P.path_rel_default_cam_settings}:")
-        for e in enumerate(errors):
-            logging.warning(e)
 
     def _set_camera_feature(self, name, val):
         """Change camera settings.
@@ -288,7 +330,7 @@ class CameraInterface:
         TODO Changing of width, height, OffsetX, and OffsetY is not allowed. Use crop() instead.
 
         Note: OutOfRangeException related to features with certain increment
-        (e.g. height, width) throws an exception which I cannot handle here.
+        (e.g. height, width) throws an exception which cannot be handle here.
 
         Parameters
         ----------
@@ -308,13 +350,13 @@ class CameraInterface:
             try:
                 # Try to set the value even if live feed is running.
                 self._cam[name].value = val
-                print(f"Feature \'{name}\' was succesfully set to {val}.")
+                print(f"Feature '{name}' was succesfully set to {val}.")
             except AccessModeError:
                 logging.warning(f"Could not change the feature {name} on the fly. Pausing and trying again.")
                 self._cam.stop_acquisition()
                 try:
                     self._cam[name].value = val
-                    print(f"Feature \'{name}\' was succesfully set to {val}.")
+                    print(f"Feature '{name}' was succesfully set to {val}.")
                 except AccessModeError as ame:
                     # Could not set the value even with feed paused.
                     logging.errror(ame)
@@ -329,7 +371,7 @@ class CameraInterface:
             except:
                 logging.error(f"Unexpected exception while trying to set the feature {name}")
             finally:
-                # Try to unpause the animation even if exceptions occurred.
+                # Try to restart acquisition even if exceptions occurred.
                 if cam_was_acquiring:
                     self._cam.start_acquisition()
         else:
@@ -338,24 +380,22 @@ class CameraInterface:
     def save_camera_settings(self, relative_path):
         """Save camera settings into a file in given path."""
 
-        # Make into absolute path so that camazing gets it correctly.
-        save_path = os.path.abspath(relative_path)
-        print(f"Trying to save camera settings to '{save_path}'", end='...')
+        abs_path = os.path.abspath(relative_path)
+        logging.info(f"Trying to save camera settings to '{abs_path}'")
         try:
-            self._cam.save_config_to_file(str(save_path), overwrite=True)
+            self._cam.save_config_to_file(str(abs_path), overwrite=True)
         except:
-            print(f"failed.")
-        print("done.")
-
+            logging.error(f"Saving camera settings failed.")
+            raise
 
     def load_camera_settings(self, relative_path):
         """Load camera settings from a file in given path."""
 
         # Make into absolute path so that camazing gets it correctly.
-        load_path = os.path.abspath(relative_path)
-        print(f"Trying to load camera settings from '{load_path}'", end='...')
+        abs_path = os.path.abspath(relative_path)
+        logging.info(f"Trying to load camera settings from '{abs_path}'")
         try:
-            self._cam.load_config_from_file(str(load_path))
+            self._cam.load_config_from_file(str(abs_path))
         except:
-            print(f"failed.")
-        print("done.")
+            logging.error(f"Loading camera settings failed.")
+            raise
