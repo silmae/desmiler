@@ -68,12 +68,13 @@ accepted_length_units = ['mm', 'deg']
 accepted_speed_units = ['mm_per_s', 'deg_per_s']
 
 ctrl_scan_settings = 'scan_settings'
+ctrl_is_mock_scan = 'ctrl_is_mock_scan'
 ctrl_scanning_speed_value   = 'scanning_speed_value'
 ctrl_scanning_speed_unit    = 'scanning_speed_unit'
 ctrl_scanning_length_value  = 'scanning_length_value'
-ctrl_scanning_length_unit   = 'scanning_length_unit'
-ctrl_accepted_length_units  = 'accepted_length_units'
-ctrl_accepted_speed_units   = 'accepted_speed_units'
+ctrl_exporure_time_s  = 'exposure_time_s'
+ctrl_acquisition_overhead = 'acquisition_overhead'
+# ctrl_scanning_length_unit   = 'scanning_length_unit'
 
 ctrl_width = 'width'
 ctrl_width_offset = 'width_offset'
@@ -89,12 +90,11 @@ ctrl_peak_width = 'peak_width'
 example_scan_control_content =\
 f"""
 [{ctrl_scan_settings}]
-    {ctrl_scanning_speed_value  } = 'scanning_speed_value'
-    {ctrl_scanning_speed_unit   } = 'scanning_speed_unit'
-    {ctrl_scanning_length_value } = 'scanning_length_value'
-    {ctrl_scanning_length_unit  } = 'scanning_length_unit'
-    {ctrl_accepted_length_units } = {accepted_length_units}
-    {ctrl_accepted_speed_units  } = {accepted_speed_units} 
+    {ctrl_is_mock_scan}           = "True"
+    {ctrl_scanning_speed_value  } = 10.0
+    {ctrl_scanning_length_value } = 20.0
+    {ctrl_exporure_time_s}        = 0.02
+    {ctrl_acquisition_overhead}   = 0.10
 	{ctrl_width} 			= 2500
 	{ctrl_width_offset} 	= 500
 	{ctrl_height}			= 760

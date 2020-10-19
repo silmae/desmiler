@@ -21,8 +21,10 @@ Order:
 
 import logging
 import toml
+from toml import TomlDecodeError
 import numpy as np
 import os
+import xarray as xr
 from xarray import Dataset
 
 from core import properties as P
@@ -31,6 +33,7 @@ from core.camera_interface import CameraInterface
 from core import smile_correction as sc
 import core.frame_manipulation as fm
 import core.cube_manipulation as cm
+import time
 
 import analysis.cube_inspector as ci
 
@@ -205,125 +208,85 @@ class ScanningSession:
         else:
             logging.error(f"Wrong reference type '{ref_type}'")
 
-    def run_scan(self, mock=True):
+    def run_scan(self):
         """Run a scan as defined in the control file of current session.
 
-        Parameters
-        ----------
-        mock : bool
-            If True, no actual work is done. This is a dry run for checking parameters etc..
-
         """
 
-        width = self.control['scan_settings']['width']
-        width_offset = self.control['scan_settings']['width_offset']
-        height = self.control['scan_settings']['height']
-        height_offset = self.control['scan_settings']['height_offset']
+        width = self.control[P.ctrl_scan_settings][P.ctrl_width]
+        width_offset = self.control[P.ctrl_scan_settings][P.ctrl_width_offset]
+        height = self.control[P.ctrl_scan_settings][P.ctrl_height]
+        height_offset = self.control[P.ctrl_scan_settings][P.ctrl_height_offset]
+        mock = self.control[P.ctrl_scan_settings][P.ctrl_is_mock_scan]
+        speed = self.control[P.ctrl_scan_settings][P.ctrl_scanning_speed_value]
+        length = self.control[P.ctrl_scan_settings][P.ctrl_scanning_length_value]
+        # exposure_time_ms = self._cami.exposure()
+        # exposure_time_mu_s = self.control[P.ctrl_scan_settings][P.ctrl_exporure_time]
+        exposure_time_s = self.control[P.ctrl_scan_settings][P.ctrl_exporure_time_s]
+        exposure_overhead = self.control[P.ctrl_scan_settings][P.ctrl_acquisition_overhead]
+        fps = 1 / (exposure_time_s * (1+exposure_overhead))
+        scan_time_raw = length / speed
+        scan_time_w_overhead = scan_time_raw * (1+exposure_overhead)
+        frame_count = int(scan_time_raw * fps)
+        frame_time = 1 / fps
+        aspect_ratio_s = f"{frame_count}/{height}"
+        aspect_ratio = frame_count / height
+        rjust = 30
+
         if mock:
-            print(f"Running a mock scan. Just printing you the parameters etc. but not recording.")
+            print(f"Running a mock scan. Just printing you the parameters etc., but not recording data.")
             print("Scanning parameters from control file:")
             for key, val in self.control[P.ctrl_scan_settings].items():
-                print(f"\t'{key}': \t{val}")
-            self.crop(width, width_offset, height, height_offset)
+                print(f"'{key}':".rjust(rjust) + f"\t{val}")
+
+            print(f"Calculated values:")
+            print(f"Raw scanning time:".rjust(rjust) + f"\t {scan_time_raw:.3} s")
+            print(f"Scanning time with overhead:".rjust(rjust) + f"\t {scan_time_w_overhead:.3} s")
+            print(f"Frame count:".rjust(rjust) + f"\t {frame_count}")
+            print(f"Aspect ratio (w/h):".rjust(rjust) + f"\t {aspect_ratio_s} ({aspect_ratio})")
+
         else:
-            self._init_cami()
-            # TODO implement
+            if self._cami is None:
+                self._init_cami()
+            self._cami.turn_on()
+            self._cami.exposure(exposure_time_s * 1000000)
+            self._cami.crop(width, width_offset, height, height_offset, full=False)
+            frame_list = []
+            scan_start_time = time.perf_counter_ns()
+            frame_times = np.zeros((frame_count,), dtype=np.float64)
 
-    def sweep(self, length=0.5, vel=0.01, count=None, dryRun=False, fileName=None):
-        """Capture eithr a linear or angular sweep.
+            for i in range(frame_count):
+                tStart = time.perf_counter_ns()
+                f = self._cami.get_frame()
+                f.coords[P.dim_scan] = i
+                frame_list.append(f)
 
-        Returns the resulting spectral cube, and saves it if a fileName is given.
-        Prints a countdown before recording is started.
-        Dark frame is not substracted and desmiling is not performed.
+                actual_frame_time_s = (time.perf_counter_ns() - tStart) / 1000000000
+                frame_times[i] = actual_frame_time_s
 
-        Parameters
-        ----------
-            length : float
-                Total travel distance of the camera in meters or angle in degrees.
-            vel : float
-                Velocity or angular velocity in meters per second or in degrees per second.
-            count : int, optional, default None
-                How many frames are captured. If none given, height of a frame is used
-                resulting in aspect ratio 1:1.
-            dryRun : bool, default False
-                If True, actual frame capturing is not done, but parameters for recording
-                are printed.
-            fileName : str, default None
-                Save resulting spectral cube with this name. Handle to file is closed.
-                If None, the result is not saved.
-        Returns
-        -------
-            DataSet
-                Resulting dataset is returned.
-        """
+                wait_time = frame_time - actual_frame_time_s
+                if wait_time > 0.:
+                    time.sleep(wait_time)
 
-        print("Trying to do a sweep. Implement me please!")
+            print(f"Total scan duration {((time.perf_counter_ns() - scan_start_time) / 1000000000):.3f} s.")
 
-        # if not self._cam.is_acquiring():
-        #     self._cam.start_acquisition()
-        #
-        # # Make x-y-ratio 1:1 as default for now
-        # if count is None:
-        #     count = self._cam['Height'].value
-        #
-        # sweepTime = length / vel
-        # print(f"Total sweep time: {sweepTime} s")
-        # # Frame time in micro seconds
-        # frameTime = 1000000 * (sweepTime / count)
-        # print(f"Frame time {frameTime} us and exposure time {self._cam['ExposureTime'].value} us")
-        #
-        # if not dryRun:
-        #     # Save consecutive frames into a list.
-        #     frameList = []
-        #
-        #     print(f"Shooting {count} frames...", end=' ')
-        #     # Countdown
-        #     for i in range(3):
-        #         print(3 - i, end=', ')
-        #         time.sleep(0.5)
-        #     print("Go!")
-        #
-        #     sweepStartTime = time.perf_counter_ns()
-        #     for i in range(count):
-        #         tStart = time.perf_counter_ns()
-        #         f = self._cam.get_frame()
-        #         # f = ft.subtractDark(frame=f, dark=self._darkFrame)
-        #         f.coords['index'] = i
-        #         frameList.append(f)
-        #
-        #         # Whole processing time of a single frame in micro seconds
-        #         duration_us = (time.perf_counter_ns() - tStart) / 1000
-        #         tw = frameTime - duration_us
-        #         # print(f"Should wait for {tw} microsecs.")
-        #         if tw > 0:
-        #             time.sleep(tw / 1000000)  # in seconds
-        #
-        #     print(f"..done. Total sweep duration {((time.perf_counter_ns() - sweepStartTime) / 1000000000):.3f} s.")
-        #     print("Starting to process...", end=' ', flush=True)
-        #     tProsStart = time.perf_counter_ns()
-        #     frames = xr.concat(frameList, dim='index')
-        #     ds = xr.Dataset(
-        #         data_vars={
-        #             'dn': frames,
-        #             'x_shift': self._desmileArray,
-        #         },
-        #     )
+            avg_frame_time = np.mean(frame_times)
+            print(f"Average frame time was {avg_frame_time} s while prior estimation was {frame_time} s.")
 
-            # NOTE desmiling should be done separately so that the original raw cube stays intact
-            # ds['desmiled_x'] = ds.x_shift + ds.x
-            # ds.coords['new_x'] = np.linspace(ds.desmiled_x.min(), ds.desmiled_x.max(), 1000)
-            # ds = ds.groupby('y').apply(self.desmile_row)
-            # duration_s = (time.perf_counter_ns() - tProsStart) / 1000000000
-            # print(f"..done. Elapsed time {duration_s} s")
+            if avg_frame_time < frame_time * 0.9:
+                print(f"More than 10 % idle time. Consider reducing the "
+                      f"'{P.ctrl_acquisition_overhead}' percentage.")
+            elif avg_frame_time > frame_time * 1.1:
+                print(f"Estimated frame time exceeded by more than 10 %. "
+                      f"Consider increasing the '{P.ctrl_acquisition_overhead}' percentage.")
 
-            # if fileName is not None:
-            #     path = f"cubes/{fileName}.nc"
-            #     print(f"Saving cube to path '{path}'...", end=' ')
-            #     ds.to_netcdf(os.path.normpath(path))
-            #     ds.close()
-            #     print("done.")
-            #
-            # return ds
+            # TODO save metadata too
+            print("Saving the raw cube")
+            frames = xr.concat(frame_list, dim=P.dim_scan)
+            raw_cube = xr.Dataset(data_vars={P.naming_cube_data: frames})
+            F.save_cube(raw_cube, self.cube_raw_path)
+            print("Cube saved")
+            self._cami.turn_off()
 
     def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
         """TODO this may be removed... i think. The control file should take care of cropping."""
@@ -348,7 +311,7 @@ class ScanningSession:
             self.control = toml.loads(P.example_scan_control_content)
 
             with open(abs_path, "w") as file:
-                toml.dump(self.control, file)
+                toml.dump(self.control, file, encoder=toml.TomlNumpyEncoder())
 
             print(f"Default control file created.")
 
