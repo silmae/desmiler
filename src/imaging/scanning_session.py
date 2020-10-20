@@ -231,7 +231,7 @@ class ScanningSession:
         fps = 1 / (exposure_time_s * (1+exposure_overhead))
         scan_time_raw = length / speed
         scan_time_w_overhead = scan_time_raw * (1+exposure_overhead)
-        frame_count = int(scan_time_raw * fps)
+        frame_count = int(scan_time_w_overhead * fps)
         frame_time = 1 / fps
         aspect_ratio_s = f"{frame_count}/{height}"
         aspect_ratio = frame_count / height
@@ -239,17 +239,20 @@ class ScanningSession:
 
         if mock:
             print(f"Running a mock scan. Just printing you the parameters etc., but not recording data.")
-            print("Scanning parameters from control file:")
-            for key, val in self.control[P.ctrl_scan_settings].items():
-                print(f"'{key}':".rjust(rjust) + f"\t{val}")
-
-            print(f"Calculated values:")
-            print(f"Raw scanning time:".rjust(rjust) + f"\t {scan_time_raw:.3} s")
-            print(f"Scanning time with overhead:".rjust(rjust) + f"\t {scan_time_w_overhead:.3} s")
-            print(f"Frame count:".rjust(rjust) + f"\t {frame_count}")
-            print(f"Aspect ratio (w/h):".rjust(rjust) + f"\t {aspect_ratio_s} ({aspect_ratio})")
-
         else:
+            print(f"Starting a scan")
+
+        print("Scanning parameters from control file:")
+        for key, val in self.control[P.ctrl_scan_settings].items():
+            print(f"'{key}':".rjust(rjust) + f"\t{val}")
+
+        print(f"Calculated values:")
+        print(f"Raw scanning time:".rjust(rjust) + f"\t {scan_time_raw:.3} s")
+        print(f"Scanning time with overhead:".rjust(rjust) + f"\t {scan_time_w_overhead:.3} s")
+        print(f"Frame count:".rjust(rjust) + f"\t {frame_count}")
+        print(f"Aspect ratio (w/h):".rjust(rjust) + f"\t {aspect_ratio_s} ({aspect_ratio})")
+
+        if not mock:
             if self._cami is None:
                 self._init_cami()
             self._cami.turn_on()
