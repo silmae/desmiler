@@ -152,6 +152,24 @@ class UI:
         synthetic.show_frame_examples()
         synthetic.show_cube_examples()
 
+    def make_reflectance_cube(self):
+        if self.sc is not None:
+            self.sc.make_reflectance_cube()
+        else:
+            logging.warning(f"Kääk")
+
+    def make_desmiled_cube(self):
+        if self.sc is not None:
+            self.sc.desmile_cube(shift_method=0)
+            self.sc.desmile_cube(shift_method=1)
+        else:
+            logging.warning(f"Kääk")
+
+    def show_cube(self):
+        if self.sc is not None:
+            self.sc.show_cube()
+        else:
+            logging.warning(f"Kääk")
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
@@ -174,7 +192,8 @@ if __name__ == '__main__':
     # ui.shoot_light()
 
     ui.start_freeform_session()
-    ui.run_scan()
+    ui.show_cube()
+    # ui.run_scan()
     # ui.inspect_light()
 
     # ui.start_preview()

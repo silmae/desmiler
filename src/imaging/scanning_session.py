@@ -33,6 +33,7 @@ from core.camera_interface import CameraInterface
 from core import smile_correction as sc
 import core.frame_manipulation as fm
 import core.cube_manipulation as cm
+from analysis.cube_inspector import CubeInspector
 import time
 
 import analysis.cube_inspector as ci
@@ -58,6 +59,7 @@ class ScanningSession:
         self.dark_path  = os.path.abspath(self.session_root + P.ref_dark_name + '.nc')
         self.white_path = os.path.abspath(self.session_root + P.ref_white_name + '.nc')
         self.light_path = os.path.abspath(self.session_root + P.ref_light_name + '.nc')
+        self.shift_path = os.path.abspath(self.session_root + P.shift_name + '.nc')
         self.cube_raw_path = os.path.abspath(self.session_root + P.cube_raw_name + '.nc')
         self.cube_rfl_path = os.path.abspath(self.session_root + P.cube_reflectance_name + '.nc')
         self.cube_desmiled_lut_path = os.path.abspath(self.session_root + P.cube_desmiled_lut + '.nc')
@@ -189,6 +191,7 @@ class ScanningSession:
         """Shoot a reference frame (dark, white or light) and save to disk."""
 
         self._init_cami()
+        self.reload_settings()
         if ref_type in (P.ref_dark_name, P.ref_white_name, P.ref_light_name):
             logging.debug(f"Crop before starting to shoot {ref_type}:\n {self._cami.get_crop_meta_dict()}")
             old, _ = self._cami.crop(full=True)
@@ -213,6 +216,7 @@ class ScanningSession:
 
         """
 
+        self.reload_settings()
         width = self.control[P.ctrl_scan_settings][P.ctrl_width]
         width_offset = self.control[P.ctrl_scan_settings][P.ctrl_width_offset]
         height = self.control[P.ctrl_scan_settings][P.ctrl_height]
@@ -332,6 +336,42 @@ class ScanningSession:
         print(f"done")
         return rfl
 
+    def make_shift_matrix(self):
+        """Make shift matrix and save it to disk.
+
+        TODO move elsewhere
+        """
+
+        width = self.control[P.ctrl_scan_settings][P.ctrl_width]
+        width_offset = self.control[P.ctrl_scan_settings][P.ctrl_width_offset]
+        height = self.control[P.ctrl_scan_settings][P.ctrl_height]
+        height_offset = self.control[P.ctrl_scan_settings][P.ctrl_height_offset]
+
+        positions = np.array(self.control[P.ctrl_spectral_lines][P.ctrl_positions]) - width_offset
+        peak_width = self.control[P.ctrl_spectral_lines][P.ctrl_peak_width]
+        bandpass_width = self.control[P.ctrl_spectral_lines][P.ctrl_window_width]
+
+        if self.light is None:
+            raise RuntimeError(f"Light data does not exist. Shoot one using ui.shoot_light(). "
+                          f"Aborting shift matrix generation. ")
+
+        light_ds = self.light.isel({P.dim_x: slice(width_offset, width_offset + width),
+                                  P.dim_y: slice(height_offset, height_offset + height)})
+        light_frame = light_ds[P.naming_frame_data]
+        bp = sc.construct_bandpass_filter(light_frame, positions, bandpass_width)
+        sl_list = sc.construct_spectral_lines(light_frame, positions, bp)
+        shift_matrix = sc.construct_shift_matrix(sl_list, light_frame[P.dim_x].size, light_frame[P.dim_y].size)
+        # frame_inspector.plot_frame(light_frame, sl_list, True, True, False, 'testing')
+
+        abs_path = os.path.abspath(self.shift_path)
+        print(f"Saving shift matrix to {abs_path}...", end=' ')
+        shift_matrix.to_netcdf(abs_path)
+        print("done")
+        # Uncomment for debugging
+        # shift_matrix.plot.imshow()
+        # plt.show()
+        return shift_matrix
+
     def desmile_cube(self, source_cube=None, shift_method=0) -> Dataset:
         """ Desmile a reflectance cube with LUT or INTR shifts and save and return the result.
 
@@ -351,6 +391,12 @@ class ScanningSession:
                 Desmiled cube for chaining.
         """
 
+
+        if os.path.exists(os.path.abspath(self.shift_path)):
+            shift = F.load_shit_matrix(self.shift_path)
+        else:
+            shift = self.make_shift_matrix()
+
         if shift_method == 0:
             cube_type = 'lut'
             save_path = self.cube_desmiled_lut_path
@@ -363,18 +409,46 @@ class ScanningSession:
         else:
             rfl = source_cube
 
-        s = F.load_shit_matrix(self.session_root + P.shift_name)
-
         print(f"Desmiling with {cube_type} shifts...", end=' ')
         desmiled = rfl.copy(deep=True)
         del rfl
-        desmiled = sc.apply_shift_matrix(desmiled, s, method=shift_method, target_is_cube=True)
+        desmiled = sc.apply_shift_matrix(desmiled, shift, method=shift_method, target_is_cube=True)
         print(f"done")
 
         print(f"Saving desmiled cube to {save_path}...", end=' ')
         F.save_cube(desmiled, save_path)
         print(f"done")
         return desmiled
+
+    def show_cube(self, force_raw_cube=False):
+        try:
+            if os.path.exists(self.cube_rfl_path) and not force_raw_cube:
+                target_cube = F.load_cube(self.cube_rfl_path)
+                viewable = P.naming_reflectance
+            elif os.path.exists(self.cube_raw_path):
+                target_cube = F.load_cube(self.cube_raw_path)
+                viewable = P.naming_cube_data
+            else:
+                raise RuntimeError(f"No source cube to show.")
+            if os.path.exists(self.cube_desmiled_lut_path):
+                target_cube_2 = F.load_cube(self.cube_desmiled_lut_path)
+            else:
+                logging.warning(f"LUT desmiled cube does not exist. Using original cube instead.")
+                target_cube_2 = target_cube
+            if os.path.exists(self.cube_desmiled_lut_path):
+                target_cube_3 = F.load_cube(self.cube_desmiled_intr_path)
+            else:
+                logging.warning(f"INTR desmiled cube does not exist. Using original cube instead.")
+                target_cube_3 = target_cube
+
+            ci = CubeInspector(target_cube, target_cube_2, target_cube_3, viewable=viewable)
+            ci.show()
+        except FileNotFoundError as fnf:
+            logging.error(fnf)
+            print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
+        except RuntimeError as r:
+            logging.error(r)
+            print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
 
 def create_example_scan():
