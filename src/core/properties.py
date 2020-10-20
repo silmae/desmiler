@@ -68,7 +68,7 @@ accepted_length_units = ['mm', 'deg']
 accepted_speed_units = ['mm_per_s', 'deg_per_s']
 
 ctrl_scan_settings = 'scan_settings'
-ctrl_is_mock_scan = 'ctrl_is_mock_scan'
+ctrl_is_mock_scan = 'is_mock_scan'
 ctrl_scanning_speed_value   = 'scanning_speed_value'
 ctrl_scanning_speed_unit    = 'scanning_speed_unit'
 ctrl_scanning_length_value  = 'scanning_length_value'
@@ -90,7 +90,7 @@ ctrl_peak_width = 'peak_width'
 example_scan_control_content =\
 f"""
 [{ctrl_scan_settings}]
-    {ctrl_is_mock_scan}           = "True"
+    {ctrl_is_mock_scan}           = 0
     {ctrl_scanning_speed_value  } = 10.0
     {ctrl_scanning_length_value } = 20.0
     {ctrl_exporure_time_s}        = 0.02
