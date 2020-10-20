@@ -80,9 +80,8 @@ def load_frame(path) -> Dataset:
 
     Returns
     -------
-    DataArray
-        Now, we actually load a Xarray Dataset, but return its 'frame' attribute.
-        Don't know if this is a good practise or not.
+    DataSet
+        Loaded frame as a Dataset.
     """
 
     path_s = str(path)
