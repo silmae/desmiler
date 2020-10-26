@@ -65,20 +65,15 @@ class UI:
 
         print(f"Session closed.")
 
+    def close_preview(self):
+        if self.preview is not None:
+            del self.preview
+
     def start_preview(self):
-        """Start a new preview for inspecting the camera feed.
-
-        Closes existing session as they use the same camera resource.
-        """
-
-        print(f"Trying to start preview")
-        if self.sc is not None:
-            print(f"An existing session must be closed before starting the preview.")
-            self.close_session()
+        """Start a new preview for inspecting the camera feed."""
 
         self.preview = Preview()
         self.preview.start()
-
 
     def shoot_dark(self):
         """Shoots and saves a dark frame.
@@ -87,10 +82,17 @@ class UI:
         to preview folder.
         """
 
+        if self.preview is not None:
+            preview_was_running = self.preview.is_running
+            self.preview.stop()
+
         if self.sc is not None:
             self.sc.shoot_dark()
         else:
             print(f"No session running. Start a session before shooting dark frame.")
+
+        if self.preview is not None and preview_was_running:
+            self.preview.start()
 
     def shoot_white(self):
         """Shoots and saves a white frame.
@@ -98,11 +100,17 @@ class UI:
         If a session exists, dark should be saved to its folder, otherwise
         to preview folder.
         """
+        if self.preview is not None:
+            preview_was_running = self.preview.is_running
+            self.preview.stop()
 
         if self.sc is not None:
             self.sc.shoot_white()
         else:
             print(f"No session running. Start a session before shooting white frame.")
+
+        if self.preview is not None and preview_was_running:
+            self.preview.start()
 
     def shoot_light(self):
         """Shoots and saves a peaky light frame.
@@ -113,10 +121,17 @@ class UI:
 
         # TODO forcibly show the result with circle and line plots
 
-        if self.sc is not None:
+        if self.preview is not None:
+            preview_was_running = self.preview.is_running
+            self.preview.stop()
+
+        if self.sc is not None and preview_was_running:
             self.sc.shoot_light()
         else:
             print(f"No session running. Start a session before shooting light frame.")
+
+        if self.preview is not None:
+            self.preview.start()
 
     def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
         # TODO this might be unnecessary as the idea is to control everything with control files. Remove?
@@ -126,10 +141,17 @@ class UI:
             print(f"Asked for cropping but there is no active session to crop.")
 
     def run_scan(self):
+        if self.preview is not None:
+            preview_was_running = self.preview.is_running
+            self.preview.stop()
+
         if self.sc is not None:
             self.sc.run_scan()
         else:
             print(f"Asked to run a scan but there is no active session to run.")
+
+        if self.preview is not None and preview_was_running:
+            self.preview.start()
 
     def inspect_light(self):
         if self.sc is not None:
@@ -197,4 +219,7 @@ if __name__ == '__main__':
     # ui.inspect_light()
 
     # ui.start_preview()
+    # ui.close_preview()
+    # ui.shoot_dark()
+
 
