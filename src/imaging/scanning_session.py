@@ -319,7 +319,7 @@ class ScanningSession:
             self.control = toml.loads(P.example_scan_control_content)
 
             with open(abs_path, "w") as file:
-                toml.dump(self.control, file, encoder=toml.TomlNumpyEncoder())
+                file.write(P.example_scan_control_content)
 
             print(f"Default control file created.")
 

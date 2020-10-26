@@ -89,21 +89,54 @@ ctrl_peak_width = 'peak_width'
 
 example_scan_control_content =\
 f"""
+# Settings related to the scan. 
 [{ctrl_scan_settings}]
+
+    # Use mock scan to check that your values are correct. Values 0 = False, 1 = True. 
     {ctrl_is_mock_scan}           = 0
+
+    # Speed in arbitrary length unit per second.
     {ctrl_scanning_speed_value  } = 10.0
+
+    # Length in same units as speed. 
     {ctrl_scanning_length_value } = 20.0
+
+    # Exposure time in seconds. (Note that exposure in camera settings are in microseconds.)
     {ctrl_exporure_time_s}        = 0.02
+
+    # There is some overhead when acquiring a frame and processing it into the image cube. 
+    # The over head defined here as a percentage will be added to exposure time in frame acquisition 
+    # loop to ensure that there is enough time to capture all the frames. The program will tell you if 
+    # the overhead is too big or too low. You can verify it only by running an actual scan, i.e. 
+    # mock = False.  
     {ctrl_acquisition_overhead}   = 0.10
+
+    # Rest of the settings are for cropping the acquired frames. Note that the camera can provide 
+    # frames more rapidly if it does not have to pass on full sensor sized frames (less data is 
+    # transferred), which means that you can run scans at higher speeds.
+    # NOTE! Use values dividable by 2. There will be unhandled errors otherwise.
 	{ctrl_width} 			= 2500
 	{ctrl_width_offset} 	= 500
 	{ctrl_height}			= 760
-	{ctrl_height_offset}	= 975
+	{ctrl_height_offset}	= 976
 
+# Settings related to spectral lines and desmiling
 [{ctrl_spectral_lines}]
-    # x-coordinates in full sensor coordinates (not cropped ones). 
+    # Spectral line positions as x-coordinates of the frame. Use preview functionality to manually find 
+    # some (or one) of the most bright spectral lines. 
+    # NOTE! Spectral line positions are expected to be in non-cropped, i.e., full sensor sized frame 
+    # coordinates. 
 	{ctrl_positions} 		= [1130, 1260, 1480, 2020]
-	{ctrl_wavelengths} 	= [327, 380, 521]
+
+    # TODO Wavelength calibration not yet implemented.
+	#{ctrl_wavelengths} 	= [327, 380, 521]
+
+    ### Peak finding ###
+
+    # Half of the search window width in pixels. Searh window is centered around given spectral line 
+    #positions for the peak finding algorithm.  
 	{ctrl_window_width} 	= 25
+
+    # Required peak width in pixels. 
 	{ctrl_peak_width} 		= 5
 """

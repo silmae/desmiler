@@ -213,7 +213,7 @@ if __name__ == '__main__':
     # ui.shoot_white()
     # ui.shoot_light()
 
-    # ui.start_freeform_session()
+    ui.start_freeform_session()
     # ui.show_cube()
     # ui.run_scan()
     # ui.inspect_light()
