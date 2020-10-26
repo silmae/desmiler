@@ -54,6 +54,8 @@ class Preview:
 
     _cami = None
 
+    is_running = False
+
     def __init__(self):
         """Initialize the LiveFeed object with given camera and dark frame.
 
@@ -66,6 +68,11 @@ class Preview:
         self._cami = CameraInterface()
         self._vertical_line_positions = self._make_line_positions('vertical')
         self._horizontal_line_positions = self._make_line_positions('horizontal')
+
+    def handle_close(self, evt):
+        print('Preview closed by the user.')
+        self.is_running = False
+        self._animation_is_running = False
 
     def reset(self):
         self.stop()
@@ -93,6 +100,7 @@ class Preview:
         self._plots = []
         self._fig, axs = plt.subplots(nrows=2, ncols=2, num=self._window_name, figsize=plotting.get_figure_size())
 
+        self._fig.canvas.mpl_connect('close_event', self.handle_close)
         # Positions of the subplots
         self._subplot_cam = axs[0, 0]
         self._subplot_row_values = axs[1, 0]
@@ -199,6 +207,7 @@ class Preview:
 
         self._cami.turn_on()
         self._animation_is_running = True
+        self.is_running = True
         plt.show()
 
     def stop(self):
@@ -212,6 +221,8 @@ class Preview:
             self._animation.event_source.stop()
             self._animation_is_running = False
             self._cami.turn_off()
+
+        self.is_running = False
     
     def _snap(self, i):
         """Update function for the animation."""
