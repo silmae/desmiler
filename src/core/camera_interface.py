@@ -122,8 +122,9 @@ class CameraInterface:
     def turn_off(self):
         """Turn the camera off. """
 
-        logging.debug("Turning camera off.")
-        self._cam.stop_acquisition()
+        if self._cam is not None and self._cam.is_initialized():
+            logging.debug("Turning camera off.")
+            self._cam.stop_acquisition()
 
     def is_on(self):
         """Returns true if camera state is 'acquiring'."""
@@ -380,13 +381,16 @@ class CameraInterface:
     def save_camera_settings(self, relative_path):
         """Save camera settings into a file in given path."""
 
-        abs_path = os.path.abspath(relative_path)
-        logging.info(f"Trying to save camera settings to '{abs_path}'")
-        try:
-            self._cam.save_config_to_file(str(abs_path), overwrite=True)
-        except:
-            logging.error(f"Saving camera settings failed.")
-            raise
+        if self._cam.is_initialized():
+            abs_path = os.path.abspath(relative_path)
+            logging.info(f"Trying to save camera settings to '{abs_path}'")
+            try:
+                self._cam.save_config_to_file(str(abs_path), overwrite=True)
+            except:
+                logging.error(f"Saving camera settings failed.")
+                raise
+        else:
+            logging.warning(f"Camera not initialized. Cannot save camera settings.")
 
     def load_camera_settings(self, relative_path):
         """Load camera settings from a file in given path."""
