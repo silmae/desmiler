@@ -232,11 +232,14 @@ class ScanningSession:
         fps = 1 / (exposure_time_s * (1+exposure_overhead))
         scan_time_raw = length / speed
         scan_time_w_overhead = scan_time_raw * (1+exposure_overhead)
-        frame_count = int(scan_time_w_overhead * fps)
+        frame_count = int(scan_time_raw * fps)
         frame_time = 1 / fps
         aspect_ratio_s = f"{frame_count}/{height}"
         aspect_ratio = frame_count / height
         rjust = 30
+
+        #FIXME redo time calculation! we cannot change the time it takes to travel as it is restricted
+        # by the scanning platform.
 
         if mock:
             print(f"Running a mock scan. Just printing you the parameters etc., but not recording data.")
