@@ -72,4 +72,4 @@ pgrCurrentCorrectedPixelOffsetY = 668
 pgrDefectPixelCorrectionEnable = true
 pgrDefectPixelCorrectionTestMode = "Off"
 pgrDevicePowerSupplySelector = "External"
-pgrExposureCompensationAuto = "Continuous"
+pgrExposureCompensationAuto = "Off"
