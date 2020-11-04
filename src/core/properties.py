@@ -64,9 +64,6 @@ meta_key_sl_Y = 'sl_Y'
 path_example_frames =  path_project_root + 'examples/'
 example_scan_name = 'example_scan'
 
-accepted_length_units = ['mm', 'deg']
-accepted_speed_units = ['mm_per_s', 'deg_per_s']
-
 ctrl_scan_settings = 'scan_settings'
 ctrl_is_mock_scan = 'is_mock_scan'
 ctrl_scanning_speed_value   = 'scanning_speed_value'
@@ -74,7 +71,6 @@ ctrl_scanning_speed_unit    = 'scanning_speed_unit'
 ctrl_scanning_length_value  = 'scanning_length_value'
 ctrl_exporure_time_s  = 'exposure_time_s'
 ctrl_acquisition_overhead = 'acquisition_overhead'
-# ctrl_scanning_length_unit   = 'scanning_length_unit'
 
 ctrl_width = 'width'
 ctrl_width_offset = 'width_offset'

@@ -35,6 +35,8 @@ import core.frame_manipulation as fm
 import core.cube_manipulation as cm
 from analysis.cube_inspector import CubeInspector
 import time
+import math
+import matplotlib.pyplot as plt
 
 import analysis.cube_inspector as ci
 
@@ -228,14 +230,21 @@ class ScanningSession:
         # exposure_time_ms = self._cami.exposure()
         # exposure_time_mu_s = self.control[P.ctrl_scan_settings][P.ctrl_exporure_time]
         exposure_time_s = self.control[P.ctrl_scan_settings][P.ctrl_exporure_time_s]
-        exposure_overhead = self.control[P.ctrl_scan_settings][P.ctrl_acquisition_overhead]
-        fps = 1 / (exposure_time_s * (1+exposure_overhead))
-        scan_time_raw = length / speed
-        scan_time_w_overhead = scan_time_raw * (1+exposure_overhead)
-        frame_count = int(scan_time_raw * fps)
-        frame_time = 1 / fps
-        aspect_ratio_s = f"{frame_count}/{height}"
+        overhead = self.control[P.ctrl_scan_settings][P.ctrl_acquisition_overhead]
+
+        # fps = 1 / (exposure_time_s * (1+exposure_overhead))
+        # scan_time_raw = length / speed
+        # scan_time_w_overhead = scan_time_raw * (1+exposure_overhead)
+        # frame_count = int(scan_time_raw * fps)
+        # frame_time = 1 / fps
+
+        time_total = length / speed
+        time_frame = exposure_time_s * (overhead + 1)
+        frame_count = math.ceil(time_total / time_frame)
+        fps = 1 / time_frame
         aspect_ratio = frame_count / height
+        aspect_ratio_s = f"{frame_count}/{height}"
+
         rjust = 30
 
         #FIXME redo time calculation! we cannot change the time it takes to travel as it is restricted
@@ -250,46 +259,108 @@ class ScanningSession:
         for key, val in self.control[P.ctrl_scan_settings].items():
             print(f"'{key}':".rjust(rjust) + f"\t{val}")
 
-        print(f"Calculated values:")
-        print(f"Raw scanning time:".rjust(rjust) + f"\t {scan_time_raw:.3} s")
-        print(f"Scanning time with overhead:".rjust(rjust) + f"\t {scan_time_w_overhead:.3} s")
+        print(f"Derived values:")
+        print(f"Scanning duration:".rjust(rjust) + f"\t {time_total:.3f} s")
         print(f"Frame count:".rjust(rjust) + f"\t {frame_count}")
+        print(f"FPS:".rjust(rjust) + f"\t {fps}")
         print(f"Aspect ratio (w/h):".rjust(rjust) + f"\t {aspect_ratio_s} ({aspect_ratio})")
 
         if not mock:
             if self._cami is None:
                 self._init_cami()
             self._cami.turn_on()
-            self._cami.exposure(exposure_time_s * 1000000)
+            self._cami.exposure(exposure_time_s * 1e6)
             self._cami.crop(width, width_offset, height, height_offset, full=False)
-            frame_list = []
-            scan_start_time = time.perf_counter_ns()
-            frame_times = np.zeros((frame_count,), dtype=np.float64)
+            frame_list = [None]*frame_count
+            frame_time_list = np.zeros((frame_count,), dtype=np.float64)
+            wait_time_list = np.zeros((frame_count,), dtype=np.float64)
+
+            # Get one frame before starting the loop as it will take more time
+            # than the rest. Probably because some initializations of the camera.
+            # This temporary frame will be overwritten in the loop.
+            frame_list[0] = self._cami.get_frame()
+
+            print(f"ExposureMode: {self._cami._cam['ExposureMode'].value}")
+            print(f"ExposureAuto: {self._cami._cam['ExposureAuto'].value}")
+            print(f"pgrExposureCompensationAuto: {self._cami._cam['pgrExposureCompensationAuto'].value}")
+
+            ### Estimate frame time ###
+
+            # test_count = 20
+            # print(self._cami.exposure())
+            # for i in range(test_count):
+            #     time_start = time.perf_counter()
+            #     f = self._cami.get_frame()
+            #     stop = time.perf_counter()
+            #     time_elapsed = stop - time_start
+            #     f.coords[P.dim_scan] = i
+            #     frame_list[i] = f.copy(deep=True)
+            #
+            #     frame_time_list[i] = time_elapsed
+            #
+            # print(self._cami.exposure())
+            # avg_frame_time = np.mean(frame_time_list[0:test_count])
+            # std_frame_time = np.std(frame_time_list[0:test_count])
+            #
+            # plt.plot(frame_time_list[0:test_count])
+            # plt.show()
+            #
+            # print(f"Average frame time was {avg_frame_time:.4f} (+- {std_frame_time:.6f}) s "
+            #       f"while prior estimation was {time_frame:.4f} s.")
+            #
+            # time_frame = avg_frame_time * (overhead+1)
+            # frame_count = math.ceil(time_total / time_frame)
+            # fps = 1 / time_frame
+            #
+            # print(f"Adjusted frame count:".rjust(rjust) + f"\t {frame_count}")
+            # print(f"Adjusted FPS:".rjust(rjust) + f"\t {fps}")
+
+            ### Estimate frame time end ###
+
+            frame_list = [None]*frame_count
+            frame_time_list = np.zeros((frame_count,), dtype=np.float64)
+            wait_time_list = np.zeros((frame_count,), dtype=np.float64)
+
+            scan_start_time = time.perf_counter()
+            print(f"Scan start with exposure {self._cami.exposure()}")
 
             for i in range(frame_count):
-                tStart = time.perf_counter_ns()
+                time_start = time.perf_counter()
                 f = self._cami.get_frame()
+                time_elapsed = (time.perf_counter() - time_start)
                 f.coords[P.dim_scan] = i
-                frame_list.append(f)
+                # frame_list.append(f)
+                frame_list[i] = f.copy(deep=True)
 
-                actual_frame_time_s = (time.perf_counter_ns() - tStart) / 1000000000
-                frame_times[i] = actual_frame_time_s
+                wait_time = max(time_frame - time_elapsed, 0.0)
+                frame_time_list[i] = time_elapsed
+                wait_time_list[i] = wait_time
 
-                wait_time = frame_time - actual_frame_time_s
                 if wait_time > 0.:
                     time.sleep(wait_time)
 
-            print(f"Total scan duration {((time.perf_counter_ns() - scan_start_time) / 1000000000):.3f} s.")
+            print("Scan done")
 
-            avg_frame_time = np.mean(frame_times)
-            print(f"Average frame time was {avg_frame_time} s while prior estimation was {frame_time} s.")
+            print(f"Total scan duration {((time.perf_counter() - scan_start_time)):.3f} s.")
 
-            if avg_frame_time < frame_time * 0.9:
+            avg_frame_time = np.mean(frame_time_list)
+            std_frame_time = np.std(frame_time_list)
+            avg_wait_time = np.mean(wait_time_list)
+            std_wait_time = np.std(wait_time_list)
+            print(f"Average frame time was {avg_frame_time:.4f} (+- {std_frame_time:.6f}) s "
+                  f"while prior estimation was {time_frame:.4f} s.")
+            print(f"Average wait time was {avg_wait_time:.4f} (+- {std_wait_time:.6f}) s ")
+
+            if avg_frame_time < time_frame * 0.9:
                 print(f"More than 10 % idle time. Consider reducing the "
                       f"'{P.ctrl_acquisition_overhead}' percentage.")
-            elif avg_frame_time > frame_time * 1.1:
+            elif avg_frame_time > time_frame * 1.1:
                 print(f"Estimated frame time exceeded by more than 10 %. "
                       f"Consider increasing the '{P.ctrl_acquisition_overhead}' percentage.")
+
+            # Plot exposure times for fun
+            plt.plot(frame_time_list)
+            plt.show()
 
             # TODO save metadata too
             print("Saving the raw cube")
@@ -336,6 +407,7 @@ class ScanningSession:
         """
 
         org = F.load_cube(self.cube_raw_path)
+
         rfl = cm.make_reflectance_cube(org, self.dark, self.white, self.control)
 
         print(f"Saving reflectance cube to {self.cube_rfl_path}...", end=' ')
@@ -448,7 +520,7 @@ class ScanningSession:
                 logging.warning(f"INTR desmiled cube does not exist. Using original cube instead.")
                 target_cube_3 = target_cube
 
-            ci = CubeInspector(target_cube, target_cube_2, target_cube_3, viewable=viewable)
+            ci = CubeInspector(target_cube, target_cube_2, target_cube_3, viewable=viewable, control=self.control)
             ci.show()
         except FileNotFoundError as fnf:
             logging.error(fnf)
@@ -457,6 +529,11 @@ class ScanningSession:
             logging.error(r)
             print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
+    def exposure(self, value=None) -> int:
+        if self._cami is not None:
+            return self._cami.exposure(value)
+        else:
+            logging.warning(f"Cannot set exposure as CameraInterface does not exist.")
 
 def create_example_scan():
     """Creates an example if does not exist."""

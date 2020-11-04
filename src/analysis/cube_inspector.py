@@ -118,7 +118,7 @@ class CubeInspector:
     
     """
 
-    def __init__(self, org, lut, intr, viewable):
+    def __init__(self, org, lut, intr, viewable, control=None):
         super().__init__()
         self.org = org
         self.lut = lut
@@ -376,7 +376,7 @@ class CubeInspector:
         May call expensive calculations, so call only when needed.
         """
 
-        print(f"Updating images (mode {self.mode})...", end=' ', flush=True)
+        # print(f"Updating images (mode {self.mode})...", end=' ', flush=True)
 
         if self.mode == 1:
             source = self.org[self.viewable].isel({P.dim_x:self.x})
@@ -413,12 +413,12 @@ class CubeInspector:
             self.ax[1,1].set_title(f'LUT {cosType}', color=self.colors_org_lut_intr[1])
             self.ax[1,0].set_title(f'INTR {cosType}', color=self.colors_org_lut_intr[2])
 
-        print("done")
+        # print("done")
 
     def update_spectrograms(self):
         """Update spectrogram view (top left) and its overlays."""
 
-        print(f"Updating spectrograms...", end=' ', flush=True)
+        # print(f"Updating spectrograms...", end=' ', flush=True)
         
         self.ax[0,0].clear()
         if self.mode == 1 or self.mode == 2:
@@ -456,12 +456,12 @@ class CubeInspector:
                 yy = np.mean(chunk, axis=0)
                 self.ax[0,0].plot(xx, yy, color=self.colors_org_lut_intr[i])
         
-        print("done")
+        # print("done")
 
     def update_image_overlay(self):
         """Update decorations drawn over the images."""
 
-        print(f"Updating image overalys...", end=' ', flush=True)
+        # print(f"Updating image overalys...", end=' ', flush=True)
         
         # Remove decoration boxes from the matplotlib images.
         for i,_ in enumerate(self.decorations_box):
@@ -500,7 +500,7 @@ class CubeInspector:
                     selection = self.ax[i,j].scatter([self.y], [self.idx], color=self.color_pixel_selection)
                     self.decorations_selection.append(selection)
 
-        print("done")
+        # print("done")
 
     def calculate_sams(self):
         """Calculates and saves spectral angle maps for all three cubes and sets them to image list."""

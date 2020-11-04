@@ -42,13 +42,12 @@ class UI:
     def start_session(self, session_name:str) -> ScanningSession:
         """Start new named scanning session with its own folder."""
 
-        print(f"Trying to start new session '{session_name}'")
         if self.sc is not None:
-            print(f"Found existing session '{self.sc.session_name}'. Cannot create a new one before closing.")
+            print(f"Closing existing session '{self.sc.session_name}' before opening a new one.")
             self.close_session()
 
         self.sc = ScanningSession(session_name)
-        print(f"Created new scanning session '{self.sc.session_name}'.")
+        print(f"Session '{self.sc.session_name}' ready.")
 
     # TODO start_session_copy() copy an existing session as a new session
 
@@ -193,6 +192,14 @@ class UI:
         else:
             logging.warning(f"Kääk")
 
+    def exposure(self, value=None) -> int:
+        if self.sc._cami is not None:
+            return self.sc.exposure(value)
+        elif self.preview is not None:
+            return self.preview._cami.exposure(value)
+        else:
+            logging.warning(f"Cannot set exposure as no Session or Preview exists.")
+
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     ui = UI()
@@ -213,10 +220,14 @@ if __name__ == '__main__':
     # ui.shoot_white()
     # ui.shoot_light()
 
-    ui.start_freeform_session()
+    # ui.start_freeform_session()
     # ui.show_cube()
     # ui.run_scan()
     # ui.inspect_light()
+    ui.start_session('cc')
+    # ui.run_scan()
+    ui.show_cube()
+
 
     # ui.start_preview()
     # ui.close_preview()
