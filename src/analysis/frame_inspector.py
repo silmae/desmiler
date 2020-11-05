@@ -40,6 +40,12 @@ def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=No
         if original_frame[P.dim_x].size != len(desmiled_bandpass[0]):
             raise ValueError("Original frame's width and bandpass list's length is not the same.")
 
+
+    if original_frame[P.naming_frame_data] is not None:
+        original_source_frame = original_frame[P.naming_frame_data]
+    else:
+        original_source_frame = original_frame
+
     w = original_frame[P.dim_x].size
     h = original_frame[P.dim_y].size
     lw = 1
@@ -51,25 +57,31 @@ def plot_frame_spectra(original_frame, original_bandpass=None, desmiled_frame=No
     _,ax = plt.subplots(num=num,ncols=2, figsize=plotting.get_figure_size())
     
     ax[0].set_title("Original")
-    ax[0].plot(xData, original_frame.isel(y=int(2*h/3)).values,linewidth=lw,color='c')
-    ax[0].plot(xData, original_frame.isel(y=int(h/2)).values,linewidth=lw,color='g')
-    ax[0].plot(xData, original_frame.isel(y=int(h/3)).values,linewidth=lw,color='y')
+    ax[0].plot(xData, original_source_frame.isel(y=int(2*h/3)).values,linewidth=lw,color='c')
+    ax[0].plot(xData, original_source_frame.isel(y=int(h/2)).values,linewidth=lw,color='g')
+    ax[0].plot(xData, original_source_frame.isel(y=int(h/3)).values,linewidth=lw,color='y')
     if original_bandpass is not None:
         ax[0].plot(xData, original_bandpass[0],linewidth=lw,color='b')
         ax[0].plot(xData, original_bandpass[1],linewidth=lw,color='r')
 
     if desmiled_frame is not None:
+
+        if original_frame[P.naming_frame_data] is not None:
+            desmiled_source_frame = desmiled_frame[P.naming_frame_data]
+        else:
+            desmiled_source_frame = desmiled_frame
+
         ax[1].set_title("Desmiled")            
-        ax[1].plot(xData, desmiled_frame.isel({P.dim_x:int(2*h/3)}).values,linewidth=lw,color='c')
-        ax[1].plot(xData, desmiled_frame.isel({P.dim_x:int(h/2)}).values,linewidth=lw,color='g')
-        ax[1].plot(xData, desmiled_frame.isel({P.dim_x:int(h/3)}).values,linewidth=lw,color='y')
+        ax[1].plot(xData, desmiled_source_frame.isel({P.dim_x:int(2*h/3)}).values,linewidth=lw,color='c')
+        ax[1].plot(xData, desmiled_source_frame.isel({P.dim_x:int(h/2)}).values,linewidth=lw,color='g')
+        ax[1].plot(xData, desmiled_source_frame.isel({P.dim_x:int(h/3)}).values,linewidth=lw,color='y')
         if desmiled_bandpass is not None:
             ax[1].plot(xData, desmiled_bandpass[0],linewidth=lw,color='b')
             ax[1].plot(xData, desmiled_bandpass[1],linewidth=lw,color='r')
     plt.show()
 
 def plot_frame(source, spectral_lines=None, plot_fit_points=False, plot_circ_fit=False,
-               plot_line_fit=False, window_name='Frame plot'):
+               plot_line_fit=False, window_name='Frame plot', control=None):
     """Plots the given frame with matplotlib.
 
     If spectral lines are given, they can be plotted on top of the frame with a 
@@ -108,16 +120,26 @@ def plot_frame(source, spectral_lines=None, plot_fit_points=False, plot_circ_fit
     if spectral_lines is not None:
         # Colormap
         cmap = cm.get_cmap('PiYG')
-    
+
+        x_offset = 0
+        y_offset = 0
+
+        if control is not None:
+            x_offset = control[P.ctrl_scan_settings][P.ctrl_width_offset]
+            y_offset = control[P.ctrl_scan_settings][P.ctrl_height_offset]
+
         for i,sl in enumerate(spectral_lines):
             # Change color for every circle
             color = cmap(1 / (i+1) )
             if plot_circ_fit:
-                ax[0].add_artist(plt.Circle((sl.circ_cntr_x, sl.circ_cntr_y), sl.circ_r, color=color, fill=False))
+                ax[0].add_artist(plt.Circle((sl.circ_cntr_x + x_offset, sl.circ_cntr_y + y_offset),
+                                            sl.circ_r, color=color, fill=False))
             if plot_fit_points:
-                ax[0].plot(sl.x,sl.y,'.',linewidth=1,color=color)
+                xx = sl.x + x_offset
+                yy = sl.y + y_offset
+                ax[0].plot(xx,yy,'.',linewidth=1,color=color)
             if plot_line_fit:
-                liny = sl.line_a*sl.x+sl.line_b
+                liny = (sl.line_a*sl.x+sl.line_b) + y_offset
                 liny = np.clip(liny, 0, frame[P.dim_y].size)
                 ax[0].plot(sl.x, liny, linewidth=1,color=color)
 
