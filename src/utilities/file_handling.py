@@ -2,9 +2,11 @@
 import os
 import logging
 from core import properties as P
+from utilities import plotting
 import xarray as xr
 from xarray import DataArray
 from xarray import Dataset
+import matplotlib.pyplot as plt
 
 import toml
 from toml import TomlDecodeError
@@ -32,7 +34,7 @@ def create_directory(path:str):
         logging.info(f"Successfully created the directory {abs_path}")
 
 
-def save_frame(frame:DataArray, path, meta_dict=None):
+def save_frame(frame:DataArray, path, meta_dict=None, save_thumbnail=True):
     """Saves a frame to the disk with given name.
 
     NOTE: even if the frame is expected to be a DataArray object,
@@ -49,6 +51,8 @@ def save_frame(frame:DataArray, path, meta_dict=None):
         A path to the file.
     meta_dict : Dictionary, optional
         Dictionary of miscellaneous metadata that gets added to DataSet's attributes.
+    save_thumbnail : bool, default True
+        Whether to save a png of the frame to path along with the actual frame.
     """
 
     frameData = xr.Dataset()
@@ -58,11 +62,20 @@ def save_frame(frame:DataArray, path, meta_dict=None):
         for key in meta_dict:
             frameData.attrs[key] = meta_dict[key]
     path_s = str(path)
+
     if not path_s.endswith('.nc'):
         path_s = path_s + '.nc'
 
     abs_path = os.path.abspath(path_s)
 
+    if save_thumbnail:
+        thumb_path = os.path.abspath(path_s.rstrip('.nc') + '.png')
+        logging.info(f"Saving thumbnail to '{abs_path}'")
+        fig,ax = plt.subplots(figsize=plotting.get_figure_size())
+        ax.imshow(frame, origin='lower')
+        fig.savefig(thumb_path)
+
+    logging.info(f"Saving frame to '{abs_path}'")
     try:
         frameData.to_netcdf(abs_path, format='NETCDF4')
     finally:
