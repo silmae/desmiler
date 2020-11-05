@@ -53,14 +53,19 @@ def save_frame(frame:DataArray, path, meta_dict=None, save_thumbnail=True):
         Dictionary of miscellaneous metadata that gets added to DataSet's attributes.
     save_thumbnail : bool, default True
         Whether to save a png of the frame to path along with the actual frame.
+
+    Returns
+    -------
+    Dataset
+        Frame as a dataset in the same format it is saved.
     """
 
-    frameData = xr.Dataset()
-    frameData[P.naming_frame_data] = frame
+    frame_dataset = xr.Dataset()
+    frame_dataset[P.naming_frame_data] = frame
 
     if meta_dict is not None:
         for key in meta_dict:
-            frameData.attrs[key] = meta_dict[key]
+            frame_dataset.attrs[key] = meta_dict[key]
     path_s = str(path)
 
     if not path_s.endswith('.nc'):
@@ -74,12 +79,15 @@ def save_frame(frame:DataArray, path, meta_dict=None, save_thumbnail=True):
         fig,ax = plt.subplots(figsize=plotting.get_figure_size())
         ax.imshow(frame, origin='lower')
         fig.savefig(thumb_path)
+        plt.close(fig)
 
     logging.info(f"Saving frame to '{abs_path}'")
     try:
-        frameData.to_netcdf(abs_path, format='NETCDF4')
+        frame_dataset.to_netcdf(abs_path, format='NETCDF4')
     finally:
-        frameData.close()
+        frame_dataset.close()
+
+    return frame_dataset
 
 
 def load_frame(path) -> Dataset:
