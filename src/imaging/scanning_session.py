@@ -34,6 +34,7 @@ from core import smile_correction as sc
 import core.frame_manipulation as fm
 import core.cube_manipulation as cm
 from analysis.cube_inspector import CubeInspector
+import analysis.frame_inspector as fi
 import time
 import math
 import matplotlib.pyplot as plt
@@ -190,6 +191,20 @@ class ScanningSession:
 
         self._shoot_reference(P.ref_light_name)
 
+    def _show_reference(self, ref_type:str):
+
+        if ref_type in (P.ref_dark_name, P.ref_white_name, P.ref_light_name):
+
+            if ref_type == P.ref_dark_name:
+                ref_frame = self.dark
+            if ref_type == P.ref_white_name:
+                ref_frame = self.white
+            if ref_type == P.ref_light_name:
+                ref_frame = self.light
+            fi.plot_frame(ref_frame)
+        else:
+            logging.error(f"Wrong reference type '{ref_type}'")
+
     def _shoot_reference(self, ref_type:str):
         """Shoot a reference frame (dark, white or light) and save to disk."""
 
@@ -199,8 +214,10 @@ class ScanningSession:
             logging.debug(f"Crop before starting to shoot {ref_type}:\n {self._cami.get_crop_meta_dict()}")
             old, _ = self._cami.crop(full=True)
             logging.debug(f"New crop:\n {self._cami.get_crop_meta_dict()}")
+            print(f"Shooting frame (avg of {P.dwl_default_count} with {self._cami.exposure():.1f} micro seconds.)")
             ref_frame = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
             meta_dict = self._cami.get_crop_meta_dict()
+            ref_frame = F.save_frame(ref_frame, self.session_root + '/' + ref_type, meta_dict=meta_dict)
             self._cami.crop(*old)
             logging.debug(f"Reverted back to crop:\n {self._cami.get_crop_meta_dict()}")
             if ref_type == P.ref_dark_name:
@@ -208,9 +225,8 @@ class ScanningSession:
             if ref_type == P.ref_white_name:
                 self.white = ref_frame
             if ref_type == P.ref_light_name:
-                self.white = ref_frame
-
-            F.save_frame(ref_frame, self.session_root + '/' + ref_type, meta_dict=meta_dict)
+                self.light = ref_frame
+            self._show_reference(ref_type)
         else:
             logging.error(f"Wrong reference type '{ref_type}'")
 
@@ -449,7 +465,7 @@ class ScanningSession:
         # Uncomment for debugging
         # shift_matrix.plot.imshow()
         # plt.show()
-        return shift_matrix
+        return shift_matrix, sl_list
 
     def desmile_cube(self, source_cube=None, shift_method=0) -> Dataset:
         """ Desmile a reflectance cube with LUT or INTR shifts and save and return the result.
@@ -472,9 +488,15 @@ class ScanningSession:
 
 
         if os.path.exists(os.path.abspath(self.shift_path)):
+            logging.info(f"Desmiling with existing shift matrix from '{self.shift_path}'.")
             shift = F.load_shit_matrix(self.shift_path)
         else:
-            shift = self.make_shift_matrix()
+            logging.info(f"Generating new shift matrix for desmiling.")
+            shift, _ = self.make_shift_matrix()
+
+        print("This how your shift matrix looks like. Close the window to continue.")
+        shift.plot()
+        plt.show()
 
         if shift_method == 0:
             cube_type = 'lut'
@@ -528,6 +550,16 @@ class ScanningSession:
         except RuntimeError as r:
             logging.error(r)
             print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
+
+    def show_shift(self):
+        s = F.load_shit_matrix(self.shift_path)
+        s.plot()
+        plt.show()
+
+    def show_light(self):
+        # fi.plot_frame(F.load_frame(self.light_path))
+        shift, sl = self.make_shift_matrix()
+        fi.plot_frame(self.light, spectral_lines=sl, plot_circ_fit=True, plot_fit_points=True, control=self.control)
 
     def exposure(self, value=None) -> int:
         if self._cami is not None:
