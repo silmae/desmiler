@@ -3,7 +3,7 @@
 Console UI for controlling various funktionalities.
 
 """
-
+from core.camera_interface  import CameraInterface
 
 from imaging.scanning_session import ScanningSession
 from imaging import scanning_session as scanning_session
@@ -118,18 +118,16 @@ class UI:
         to preview folder.
         """
 
-        # TODO forcibly show the result with circle and line plots
-
         if self.preview is not None:
             preview_was_running = self.preview.is_running
             self.preview.stop()
 
-        if self.sc is not None and preview_was_running:
+        if self.sc is not None:
             self.sc.shoot_light()
         else:
             print(f"No session running. Start a session before shooting light frame.")
 
-        if self.preview is not None:
+        if self.preview is not None and preview_was_running:
             self.preview.start()
 
     def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
@@ -152,13 +150,12 @@ class UI:
         if self.preview is not None and preview_was_running:
             self.preview.start()
 
-    def inspect_light(self):
-        if self.sc is not None:
-            path = self.sc.session_root + '/' + P.ref_light_name
-            frame_ds = F.load_frame(path)
-            frame = frame_ds.frame
-            frame_inspector.plot_frame(frame)
-            frame_inspector.plot_frame_spectra(frame)
+    # def inspect_light(self):
+    #     if self.sc is not None:
+    #         path = self.sc.session_root + '/' + P.ref_light_name
+    #         frame_ds = F.load_frame(path)
+    #         frame_inspector.plot_frame(frame_ds)
+    #         frame_inspector.plot_frame_spectra(frame_ds)
 
             # f_vals = frame.values
             # log_frame = frame
@@ -192,6 +189,18 @@ class UI:
         else:
             logging.warning(f"Kääk")
 
+    def show_shift(self):
+        if self.sc is not None:
+            self.sc.show_shift()
+        else:
+            logging.warning(f"Kääk")
+
+    def show_light(self):
+        if self.sc is not None:
+            self.sc.show_light()
+        else:
+            logging.warning(f"Kääk")
+
     def exposure(self, value=None) -> int:
         if self.sc._cami is not None:
             return self.sc.exposure(value)
@@ -206,8 +215,6 @@ if __name__ == '__main__':
     # ui.start_session(P.example_scan_name)
     # ui.inspect_light()
     # sc = ui.sc
-    # sc.make_reflectance_cube()
-    # desmiled = sc.desmile_cube()
 
     # raw = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name + '.nc'))
     # desmiled = F.load_cube(os.path.abspath(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_lut + '.nc'))
@@ -224,10 +231,27 @@ if __name__ == '__main__':
     # ui.show_cube()
     # ui.run_scan()
     # ui.inspect_light()
-    ui.start_session('cc')
+    # ui.start_session('cc')
+    # ui.shoot_light()
+    # ui.shoot_dark()
+    # ui.shoot_white()
+    # ui.make_reflectance_cube()
+    # ui.show_shift()
+    # ui.show_light()
+    # ui.make_desmiled_cube()
     # ui.run_scan()
-    ui.show_cube()
 
+    # ui.show_cube()
+    # ui.show_shift()
+
+    # cami = CameraInterface()
+    # d = cami._cam.features()
+
+    # for i in range(len(d)):
+    #     print(d[i])
+    # print(f"AcquisitionFrameRateAuto : {cami._cam['AcquisitionFrameRateAuto'].value}")
+    # print(f"SingleFrameAcquisitionMode : {cami._cam['SingleFrameAcquisitionMode'].info()}")
+    # print(f"SingleFrameAcquisitionMode : {cami._cam['SingleFrameAcquisitionMode'].info()}")
 
     # ui.start_preview()
     # ui.close_preview()

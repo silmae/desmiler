@@ -558,6 +558,7 @@ class ScanningSession:
 
     def show_light(self):
         # fi.plot_frame(F.load_frame(self.light_path))
+        self.reload_settings()
         shift, sl = self.make_shift_matrix()
         fi.plot_frame(self.light, spectral_lines=sl, plot_circ_fit=True, plot_fit_points=True, control=self.control)
 
