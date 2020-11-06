@@ -1,4 +1,4 @@
-AcquisitionFrameRateAuto = "Continuous"
+AcquisitionFrameRateAuto = "Off" #off
 AcquisitionFrameRateEnabled = true
 AcquisitionMode = "Continuous"
 AcquisitionStatusSelector = "FrameTriggerWait"
@@ -22,7 +22,7 @@ EventNotification = "Off"
 EventSelector = "ExposureEnd"
 ExposureAuto = "Off"
 ExposureMode = "Timed"
-ExposureTime = 25000
+ExposureTime = 15000
 GainAuto = "Off"
 Gain = 2
 Gamma = 1.25
