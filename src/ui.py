@@ -231,7 +231,7 @@ if __name__ == '__main__':
     # ui.show_cube()
     # ui.run_scan()
     # ui.inspect_light()
-    # ui.start_session('cc')
+    ui.start_session('samir')
     # ui.shoot_light()
     # ui.shoot_dark()
     # ui.shoot_white()
@@ -241,7 +241,7 @@ if __name__ == '__main__':
     # ui.make_desmiled_cube()
     # ui.run_scan()
 
-    # ui.show_cube()
+    ui.show_cube()
     # ui.show_shift()
 
     # cami = CameraInterface()

@@ -542,7 +542,7 @@ class ScanningSession:
                 logging.warning(f"INTR desmiled cube does not exist. Using original cube instead.")
                 target_cube_3 = target_cube
 
-            ci = CubeInspector(target_cube, target_cube_2, target_cube_3, viewable=viewable, control=self.control)
+            ci = CubeInspector(target_cube, target_cube_2, target_cube_3, viewable=viewable, session_name=self.session_name)
             ci.show()
         except FileNotFoundError as fnf:
             logging.error(fnf)

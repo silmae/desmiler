@@ -2,8 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.cm as cm
+import logging
 
-import core.properties as P
+from core import properties as P
+from utilities import file_handling as F
+from utilities.numeric import clamp
 
 from core import scan as scan
 
@@ -118,12 +121,20 @@ class CubeInspector:
     
     """
 
-    def __init__(self, org, lut, intr, viewable, control=None):
+    def __init__(self, org, lut, intr, viewable, session_name=None):
         super().__init__()
         self.org = org
         self.lut = lut
         self.intr = intr
         self.viewable = viewable
+        self.use_session_control = False
+
+        if session_name is not None:
+            self.use_session_control = True
+            self.path_control = P.path_rel_scan + session_name + '/' + P.fn_control
+            logging.info(f"CubeInspector using control file from '{self.path_control}'.")
+            self.control = F.load_control_file(self.path_control)
+
         # Interpolative shift may cause very small negative values, which should be clipped. 
         # self.intr[self.viewable].values = self.intr[self.viewable].values.clip(min=0.0).astype(np.float32)
 
@@ -177,10 +188,7 @@ class CubeInspector:
 
         # Filter out noisy ends of the spectrum in cosine maps.
         self.spectral_filter_max = self.org[self.viewable][P.dim_x].size
-        # Filter one third from the middle of the spectrum by default.
-        lin_spectr = np.linspace(0, self.spectral_filter_max, 4, dtype=np.int)
-        self.spectral_filter = slice(lin_spectr[1], lin_spectr[2])
-        # How much the spectral filter is moved to left or right.        
+        self.reinit_spectral_filter()
         self.spectral_filter_step = 100
 
         # Cosine boxes
@@ -194,6 +202,21 @@ class CubeInspector:
         # Image overlay decorations. Store handles for removing the objects.
         self.decorations_selection = []
         self.decorations_box = []
+
+    def reload_control(self):
+        self.control = F.load_control_file(self.path_control)
+
+    def reinit_spectral_filter(self):
+        self.reload_control()
+        # Filter one third from the middle of the spectrum by default.
+        lin_spectr = np.linspace(0, self.spectral_filter_max, 4, dtype=np.int)
+        if self.use_session_control:
+            fil = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_filter]
+            self.spectral_filter = slice(clamp(fil[0], 0, self.spectral_filter_max),
+                                         clamp(fil[1], 0, self.spectral_filter_max))
+        else:
+            self.spectral_filter = slice(clamp(lin_spectr[0], 0, self.spectral_filter_max),
+                                        clamp(lin_spectr[1], 0, self.spectral_filter_max))
 
     def init_plot(self):
         self.fig, self.ax = plt.subplots(nrows=2, ncols=2, num='Cube', figsize=(16,12))
@@ -322,6 +345,9 @@ class CubeInspector:
                 low = np.clip(low, a_min=0, a_max=self.spectral_filter_max)
                 high = np.clip(high, a_min=0, a_max=self.spectral_filter_max)
                 self.spectral_filter = slice(low, high)
+                self.show(force_update=True)
+            if key == 'u':
+                self.reinit_spectral_filter()
                 self.show(force_update=True)
     
     def show(self, x=None, y=None, band=None, mode=None, force_update=False, sam_ref_x=None, spectral_filter=None):

@@ -64,6 +64,11 @@ meta_key_sl_Y = 'sl_Y'
 path_example_frames =  path_project_root + 'examples/'
 example_scan_name = 'example_scan'
 
+########### Control file #############
+
+ctrl_cube_inspector = 'cube_inspector'
+ctrl_spectral_filter = 'spectral_filter'
+
 ctrl_scan_settings = 'scan_settings'
 ctrl_is_mock_scan = 'is_mock_scan'
 ctrl_scanning_speed_value   = 'scanning_speed_value'
@@ -85,6 +90,10 @@ ctrl_peak_width = 'peak_width'
 
 example_scan_control_content =\
 f"""
+
+[{ctrl_cube_inspector}]
+    {ctrl_spectral_filter}      = [500,1000]
+
 # Settings related to the scan. 
 [{ctrl_scan_settings}]
 
