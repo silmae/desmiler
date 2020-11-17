@@ -304,15 +304,6 @@ def make_distorted_frame(distortions, amount=None):
     bp = sc.construct_bandpass_filter(crop_frame, positions, bandpass_width)
     sl_list = sc.construct_spectral_lines(crop_frame, positions, bp, peak_width=peak_width)
 
-    # i = 1
-    # for sl in sl_list:
-    #     sl_meta = {}
-    #     sl_meta['position'] = sl.location
-    #     sl_meta['curvature'] = sl.curvature
-    #     sl_meta['tilt'] = sl.tilt
-    #     meta[f"sl_{i}"] = sl_meta
-    #     i += 1
-
     meta[P.meta_key_sl_count] = len(sl_list)
     meta[P.meta_key_location] = [sl.location for sl in sl_list]
     meta[P.meta_key_tilt] = [sl.tilt for sl in sl_list]
@@ -325,6 +316,9 @@ def make_distorted_frame(distortions, amount=None):
     print(meta)
 
     ################
+
+    u_frame = u_frame.isel({P.dim_x: slice(width_offset, width_offset + width),
+                              P.dim_y: slice(height_offset, height_offset + height)})
 
     F.save_frame(u_frame, save_path, meta)
     print(f"Generated distorted frame to '{save_path}'")
@@ -436,10 +430,10 @@ def make_shift_matrix():
     # Uncomment for debugging
     # shift_matrix.plot.imshow()
     # plt.show()
-    return shift_matrix
+    return shift_matrix, sl_list
 
 
-def apply_frame_correction(shift_matrix, method):
+def apply_frame_correction(method):
     control = toml.loads(P.example_scan_control_content)
     width = control[P.ctrl_scan_settings][P.ctrl_width]
     width_offset = control[P.ctrl_scan_settings][P.ctrl_width_offset]
@@ -453,12 +447,15 @@ def apply_frame_correction(shift_matrix, method):
     light_ds = F.load_frame(distotion_smile_tilt_path)
     light_ds = light_ds.isel({P.dim_x: slice(width_offset, width_offset + width),
                               P.dim_y: slice(height_offset, height_offset + height)})
+    sm, sl = make_shift_matrix()
+
+    # Uncomment for debugging
+    frame_inspector.plot_frame(light_ds, sl, True, True)
+    sm.plot()
+    plt.show()
 
     light_frame = light_ds[P.naming_frame_data]
-    corrected = sc.apply_shift_matrix(light_frame, shift_matrix=shift_matrix, method=method, target_is_cube=False)
-    # Uncomment for debugging
-    # corrected.plot.imshow()
-    # plt.show()
+    corrected = sc.apply_shift_matrix(light_frame, shift_matrix=sm, method=method, target_is_cube=False)
     return corrected
 
 
@@ -523,11 +520,9 @@ def generate_frame_examples():
     make_distorted_frame(['tilt'])
     make_distorted_frame(['smile', 'tilt'])
 
-    sm = make_shift_matrix()
-
-    lut_frame = apply_frame_correction(sm, 0)
+    lut_frame = apply_frame_correction(0)
     F.save_frame(lut_frame, desmile_lut_path)
-    intr_frame = apply_frame_correction(sm, 1)
+    intr_frame = apply_frame_correction(1)
     F.save_frame(intr_frame, desmile_intr_path)
 
 
@@ -591,14 +586,17 @@ def show_raw_cube():
 if __name__ == '__main__':
     # light_frame_to_spectrogram()
 
-    # generate_frame_examples()
+    generate_frame_examples()
     # generate_cube_examples()
     # generate_all_examples()
 
-    # show_frame_examples()
+    show_frame_examples()
 
     # show_raw_cube()
-    show_cube_examples()
-    # show_shift_matrix()
-
+    # show_cube_examples()
     # show_smiled_tilted_frame()
+
+    # apply_frame_correction(0)
+    # apply_frame_correction(1)
+    # show_desmiled_intr()
+    # show_desmiled_lut()
