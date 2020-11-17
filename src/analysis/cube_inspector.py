@@ -8,8 +8,6 @@ from core import properties as P
 from utilities import file_handling as F
 from utilities.numeric import clamp
 
-from core import scan as scan
-
 # Under what name the data is in the cube. 
 cube_data_name = 'dn'
 
