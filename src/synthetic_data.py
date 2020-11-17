@@ -582,15 +582,129 @@ def show_raw_cube():
         logging.error(r)
         print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
+def generate_frame_series():
+    print("Generating distorted frame series")
+
+    if not os.path.exists(undistorted_frame_path):
+        raise RuntimeError(f"Path '{undistorted_frame_path}' to undistorted frame does not exist. ")
+
+    u_frame_ds = F.load_frame(undistorted_frame_path)
+    u_frame = u_frame_ds[P.naming_frame_data]
+    width = u_frame[P.dim_x].size
+    height = u_frame[P.dim_y].size
+    save_path = P.path_example_frames + 'distorted_series'
+
+    control = toml.loads(P.example_scan_control_content)
+    width = control[P.ctrl_scan_settings][P.ctrl_width]
+    width_offset = control[P.ctrl_scan_settings][P.ctrl_width_offset]
+    height = control[P.ctrl_scan_settings][P.ctrl_height]
+    height_offset = control[P.ctrl_scan_settings][P.ctrl_height_offset]
+    positions = np.array(control[P.ctrl_spectral_lines][P.ctrl_positions]) - width_offset
+    peak_width = control[P.ctrl_spectral_lines][P.ctrl_peak_width]
+    bandpass_width = control[P.ctrl_spectral_lines][P.ctrl_window_width]
+
+    x_slice = slice(width_offset, width_offset + width)
+    y_slice = slice(height_offset, height_offset + height)
+
+    u_frame = u_frame.isel({P.dim_x: x_slice, P.dim_y: y_slice})
+
+    curvature = 3e-5
+    tilt = 1
+    frame_count = 2
+    use_intr = True
+
+    meta = {}
+    meta[key_curvature_generated] = curvature
+    meta[key_tilt_generated] = tilt
+
+    frame_list = [None]*frame_count
+    print(f"Starting frame generator loop for {frame_count} frames.")
+    for i in range(frame_count):
+        smile_matrix = generate_distortion_matrix(width, height, curvature, method='smile')
+        tilt_matrix = generate_distortion_matrix(width, height, tilt, method='tilt')
+        distorition_matrix = xr.DataArray(smile_matrix + tilt_matrix, dims=(P.dim_y, P.dim_x))
+        if use_intr:
+            ds = xr.Dataset(
+                data_vars={
+                    P.naming_frame_data: u_frame,
+                    'x_shift': distorition_matrix,
+                },
+            )
+
+            ds['distorted_x'] = ds[P.dim_x] - ds.x_shift
+            ds.coords['new_x'] = np.linspace(0, u_frame[P.dim_x].size, u_frame[P.dim_x].size)
+            ds = ds.groupby(P.dim_y).apply(distort_row)
+
+            ds = ds.drop(P.dim_x)
+            renames = {'new_x': P.dim_x}
+            ds = ds.rename(renames)
+            frame_list[i] = ds[P.naming_frame_data]
+        else:
+            raise NotImplementedError(f"LUT distortion not implemented")
+    print(f"Loop finished. ")
+
+    print(f"Saving frame series as a cube.")
+    frames = xr.concat(frame_list, dim=P.dim_scan)
+    cube = xr.Dataset(
+        data_vars={
+            P.naming_cube_data: frames,
+        },
+    )
+    F.save_cube(cube, save_path)
+    print(f"Series cube saved to {save_path}")
+
+def show_distorted_series():
+    """Debugging method for series. """
+
+    save_path = P.path_example_frames + 'distorted_series'
+    distorted_series = F.load_cube(save_path)
+    frame_count = distorted_series[P.naming_cube_data][P.dim_scan].size
+    for i in range(frame_count):
+        print(f"Showing frame {i}")
+        frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:i})
+        plt.imshow(frame)
+        plt.show()
+
+# def asdfklj(u_frame, smile_matrix, tilt_matrix):
+#
+#     crop_frame = u_frame.isel({P.dim_x: slice(width_offset, width_offset + width),
+#                                P.dim_y: slice(height_offset, height_offset + height)})
+#     bp = sc.construct_bandpass_filter(crop_frame, positions, bandpass_width)
+#     sl_list = sc.construct_spectral_lines(crop_frame, positions, bp, peak_width=peak_width)
+#
+#     meta[P.meta_key_sl_count] = len(sl_list)
+#     meta[P.meta_key_location] = [sl.location for sl in sl_list]
+#     meta[P.meta_key_tilt] = [sl.tilt for sl in sl_list]
+#     meta[P.meta_key_curvature] = [sl.curvature for sl in sl_list]
+#
+#     # TODO the mean curvature is not very good estimator as shallow curves may be in both directions
+#     meta[key_curvature_measured_mean] = np.mean(np.array([sl.curvature for sl in sl_list]))
+#     meta[key_tilt_measured_mean] = np.mean(np.array([sl.tilt_angle_degree_abs for sl in sl_list]))
+#
+#     print(meta)
+#
+#     ################
+#
+#     u_frame = u_frame.isel({P.dim_x: slice(width_offset, width_offset + width),
+#                               P.dim_y: slice(height_offset, height_offset + height)})
+#
+#     F.save_frame(u_frame, save_path, meta)
+#     print(f"Generated distorted frame to '{save_path}'")
+#     # plt.imshow(u_frame)
+#     # plt.show()
 
 if __name__ == '__main__':
+
+    show_distorted_series()
+    # generate_frame_series()
+
     # light_frame_to_spectrogram()
 
-    generate_frame_examples()
+    # generate_frame_examples()
     # generate_cube_examples()
     # generate_all_examples()
 
-    show_frame_examples()
+    # show_frame_examples()
 
     # show_raw_cube()
     # show_cube_examples()
