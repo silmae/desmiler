@@ -14,6 +14,8 @@ from analysis.cube_inspector import CubeInspector
 from core import smile_correction as sc
 from imaging.scanning_session import ScanningSession
 
+import time
+
 # TODO rename to 'example_source' and move to top level dir, so that deleting examples folder does not matter?
 example_spectrogram_path = os.path.abspath(P.path_example_frames + 'fluorescence_spectrogram.nc')
 undistorted_frame_path = os.path.abspath(P.path_example_frames + 'undistorted_frame.nc')
@@ -275,6 +277,8 @@ def make_distorted_frame(distortions, amount=None):
             curvature = amount
         meta[key_curvature_generated] = curvature
         distortion_matrix = generate_distortion_matrix(width, height, curvature, method='smile')
+        plt.imshow(distortion_matrix)
+        plt.show()
         u_frame = interpolative_distortion(u_frame, distortion_matrix)
         save_path = save_path + '_smile'
     if 'tilt' in distortions:
@@ -284,6 +288,8 @@ def make_distorted_frame(distortions, amount=None):
             tilt = amount
         meta[key_tilt_generated] = tilt
         distortion_matrix = generate_distortion_matrix(width, height, tilt, method='tilt')
+        plt.imshow(distortion_matrix)
+        plt.show()
         save_path = save_path + '_tilt'
         u_frame = interpolative_distortion(u_frame, distortion_matrix)
 
@@ -583,17 +589,6 @@ def show_raw_cube():
         print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
 def generate_frame_series():
-    print("Generating distorted frame series")
-
-    if not os.path.exists(undistorted_frame_path):
-        raise RuntimeError(f"Path '{undistorted_frame_path}' to undistorted frame does not exist. ")
-
-    u_frame_ds = F.load_frame(undistorted_frame_path)
-    u_frame = u_frame_ds[P.naming_frame_data]
-    width = u_frame[P.dim_x].size
-    height = u_frame[P.dim_y].size
-    save_path = P.path_example_frames + 'distorted_series'
-
     control = toml.loads(P.example_scan_control_content)
     width = control[P.ctrl_scan_settings][P.ctrl_width]
     width_offset = control[P.ctrl_scan_settings][P.ctrl_width_offset]
@@ -603,15 +598,53 @@ def generate_frame_series():
     peak_width = control[P.ctrl_spectral_lines][P.ctrl_peak_width]
     bandpass_width = control[P.ctrl_spectral_lines][P.ctrl_window_width]
 
-    x_slice = slice(width_offset, width_offset + width)
-    y_slice = slice(height_offset, height_offset + height)
+    source = F.load_frame(example_spectrogram_path)
+    source_data = source[P.naming_frame_data].data
+    source_data = source_data[width_offset:width_offset + width]
 
-    u_frame = u_frame.isel({P.dim_x: x_slice, P.dim_y: y_slice})
+    np.random.seed(3226546)
 
-    curvature = 3e-5
-    tilt = 1
+    def frame_gen():
+
+        max_pixel_val = source_data.max()
+        expanded_data = np.repeat(source_data, height)
+        expanded_data = np.reshape(expanded_data, (width, height))
+        expanded_data = expanded_data.transpose()
+
+        # Multiply each row with a random number
+        rand_row = np.random.normal(1, row_noise_fac, size=(height,))
+        expanded_data = expanded_data * rand_row[:, None]
+
+        # Add random noise
+        rando = np.random.uniform(0, random_noise_fac * max_pixel_val, size=(height, width))
+        expanded_data = expanded_data + rando
+
+        coords = {
+            P.dim_x: (P.dim_x, np.arange(0, width) + 0.5),
+            P.dim_y: (P.dim_y, np.arange(0, height) + 0.5),
+            "timestamp": dt.datetime.today().timestamp(),
+        }
+        dims = (P.dim_y, P.dim_x)
+        frame = xr.DataArray(
+            expanded_data,
+            name=P.naming_frame_data,
+            dims=dims,
+            coords=coords,
+        )
+        return frame
+
+    print("Generating distorted frame series")
+
+    save_path = P.path_example_frames + 'distorted_series'
+
+    curvature = -3e-5
+    tilt = -1
     frame_count = 2
     use_intr = True
+
+    smile_matrix = generate_distortion_matrix(width, height, amount=curvature, method='smile')
+    tilt_matrix = generate_distortion_matrix(width, height, amount=tilt, method='tilt')
+    distorition_matrix = xr.DataArray(smile_matrix + tilt_matrix, dims=(P.dim_y, P.dim_x))
 
     meta = {}
     meta[key_curvature_generated] = curvature
@@ -620,13 +653,10 @@ def generate_frame_series():
     frame_list = [None]*frame_count
     print(f"Starting frame generator loop for {frame_count} frames.")
     for i in range(frame_count):
-        smile_matrix = generate_distortion_matrix(width, height, amount=curvature, method='smile')
-        tilt_matrix = generate_distortion_matrix(width, height, amount=tilt, method='tilt')
-        distorition_matrix = xr.DataArray(smile_matrix + tilt_matrix, dims=(P.dim_y, P.dim_x))
 
-        # Debugging plot
-        plt.imshow(distorition_matrix)
-        plt.show()
+        u_frame = frame_gen()
+        for key in meta:
+            u_frame.attrs[key] = meta[key]
 
         if use_intr:
             ds = xr.Dataset(
@@ -643,7 +673,10 @@ def generate_frame_series():
             ds = ds.drop(P.dim_x)
             renames = {'new_x': P.dim_x}
             ds = ds.rename(renames)
-            frame_list[i] = ds[P.naming_frame_data]
+
+            frame = ds[P.naming_frame_data]
+            frame.coords[P.dim_scan] = i
+            frame_list[i] = frame
         else:
             raise NotImplementedError(f"LUT distortion not implemented")
     print(f"Loop finished. ")
@@ -667,21 +700,93 @@ def show_distorted_series():
     for i in range(frame_count):
         print(f"Showing frame {i}")
         frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:i})
+
+        if len(frame.attrs) >= 1:
+            print(f"Frame metadata from DataArray:")
+            for key, val in frame.attrs.items():
+                print(f"\t{key} : \t{val}")
+
         plt.imshow(frame)
         plt.show()
 
-# def asdfklj(u_frame, smile_matrix, tilt_matrix):
+def show_corrected_series():
+    """Debugging method for series. """
+
+    save_path = P.path_example_frames + 'corrected_series'
+    distorted_series = F.load_cube(save_path)
+    frame_count = distorted_series[P.naming_cube_data][P.dim_scan].size
+    for i in range(frame_count):
+        print(f"Showing frame {i}")
+        frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:i})
+
+        if len(frame.attrs) >= 1:
+            print(f"Frame metadata from DataArray:")
+            for key, val in frame.attrs.items():
+                print(f"\t{key} : \t{val}")
+
+        plt.imshow(frame)
+        plt.show()
+
+def desmile_series():
+    """Desmile and save metadata of the result """
+
+    control = toml.loads(P.example_scan_control_content)
+    width = control[P.ctrl_scan_settings][P.ctrl_width]
+    width_offset = control[P.ctrl_scan_settings][P.ctrl_width_offset]
+    height = control[P.ctrl_scan_settings][P.ctrl_height]
+    height_offset = control[P.ctrl_scan_settings][P.ctrl_height_offset]
+    positions = np.array(control[P.ctrl_spectral_lines][P.ctrl_positions]) - width_offset
+    peak_width = control[P.ctrl_spectral_lines][P.ctrl_peak_width]
+    bandpass_width = control[P.ctrl_spectral_lines][P.ctrl_window_width]
+
+    save_path = P.path_example_frames + 'corrected_series'
+    load_path = P.path_example_frames + 'distorted_series'
+    distorted_series = F.load_cube(load_path)
+    frame_count = distorted_series[P.naming_cube_data][P.dim_scan].size
+
+    frame_list = [None]*frame_count
+    attr_list = [None]*frame_count
+
+    for i in range(frame_count):
+        print(f"Processing frame {i}")
+        frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:i})
 #
 #     crop_frame = u_frame.isel({P.dim_x: slice(width_offset, width_offset + width),
 #                                P.dim_y: slice(height_offset, height_offset + height)})
-#     bp = sc.construct_bandpass_filter(crop_frame, positions, bandpass_width)
-#     sl_list = sc.construct_spectral_lines(crop_frame, positions, bp, peak_width=peak_width)
-#
-#     meta[P.meta_key_sl_count] = len(sl_list)
-#     meta[P.meta_key_location] = [sl.location for sl in sl_list]
-#     meta[P.meta_key_tilt] = [sl.tilt for sl in sl_list]
-#     meta[P.meta_key_curvature] = [sl.curvature for sl in sl_list]
-#
+
+        bp = sc.construct_bandpass_filter(frame, positions, bandpass_width)
+        sl_list = sc.construct_spectral_lines(frame, positions, bp, peak_width=peak_width)
+
+        # Add metadata for uncorrected spectral lines
+        frame.attrs[P.meta_key_sl_count]  = len(sl_list)
+        frame.attrs[P.meta_key_location]  = [sl.location for sl in sl_list]
+        frame.attrs[P.meta_key_tilt]      = [sl.tilt for sl in sl_list]
+        frame.attrs[P.meta_key_curvature] = [sl.curvature for sl in sl_list]
+
+        shift_matrix = sc.construct_shift_matrix(sl_list, frame[P.dim_x].size, frame[P.dim_y].size)
+        frame = sc.apply_shift_matrix(frame, shift_matrix=shift_matrix, method=0, target_is_cube=False)
+        sl_list_corrected = sc.construct_spectral_lines(frame, positions, bp, peak_width=peak_width)
+
+        frame.attrs[P.meta_key_location + '_c']  = [sl.location for sl in sl_list_corrected]
+        frame.attrs[P.meta_key_tilt + '_c']      = [sl.tilt for sl in sl_list_corrected]
+        frame.attrs[P.meta_key_curvature + '_c'] = [sl.curvature for sl in sl_list_corrected]
+
+        frame.coords[P.dim_scan] = i
+        frame_list[i] = frame
+        attr_list[i] = xr.DataArray(frame.attrs)
+
+    print(f"Saving frame series as a cube.")
+    frames = xr.concat(frame_list, dim=P.dim_scan)
+    frame_attrs = xr.concat(attr_list, dim=P.dim_scan)
+    cube = xr.Dataset(
+        data_vars={
+            P.naming_cube_data: frames,
+            'frame_attrs' : frame_attrs,
+        },
+    )
+    F.save_cube(cube, save_path)
+    print(f"Series cube saved to {save_path}")
+
 #     # TODO the mean curvature is not very good estimator as shallow curves may be in both directions
 #     meta[key_curvature_measured_mean] = np.mean(np.array([sl.curvature for sl in sl_list]))
 #     meta[key_tilt_measured_mean] = np.mean(np.array([sl.tilt_angle_degree_abs for sl in sl_list]))
@@ -700,8 +805,10 @@ def show_distorted_series():
 
 if __name__ == '__main__':
 
-    generate_frame_series()
-    show_distorted_series()
+    # generate_frame_series()
+    # show_distorted_series()
+    desmile_series()
+    # show_corrected_series()
 
     # light_frame_to_spectrogram()
 
