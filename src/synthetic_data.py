@@ -620,9 +620,14 @@ def generate_frame_series():
     frame_list = [None]*frame_count
     print(f"Starting frame generator loop for {frame_count} frames.")
     for i in range(frame_count):
-        smile_matrix = generate_distortion_matrix(width, height, curvature, method='smile')
-        tilt_matrix = generate_distortion_matrix(width, height, tilt, method='tilt')
+        smile_matrix = generate_distortion_matrix(width, height, amount=curvature, method='smile')
+        tilt_matrix = generate_distortion_matrix(width, height, amount=tilt, method='tilt')
         distorition_matrix = xr.DataArray(smile_matrix + tilt_matrix, dims=(P.dim_y, P.dim_x))
+
+        # Debugging plot
+        plt.imshow(distorition_matrix)
+        plt.show()
+
         if use_intr:
             ds = xr.Dataset(
                 data_vars={
@@ -695,8 +700,8 @@ def show_distorted_series():
 
 if __name__ == '__main__':
 
+    generate_frame_series()
     show_distorted_series()
-    # generate_frame_series()
 
     # light_frame_to_spectrogram()
 
