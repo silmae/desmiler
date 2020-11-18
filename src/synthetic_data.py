@@ -588,7 +588,7 @@ def show_raw_cube():
         logging.error(r)
         print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
-def generate_frame_series():
+def generate_frame_series(frame_count=10):
     control = toml.loads(P.example_scan_control_content)
     width = control[P.ctrl_scan_settings][P.ctrl_width]
     width_offset = control[P.ctrl_scan_settings][P.ctrl_width_offset]
@@ -639,7 +639,6 @@ def generate_frame_series():
 
     curvature = -3e-5
     tilt = -1
-    frame_count = 2
     use_intr = True
 
     smile_matrix = generate_distortion_matrix(width, height, amount=curvature, method='smile')
@@ -652,7 +651,15 @@ def generate_frame_series():
 
     frame_list = [None]*frame_count
     print(f"Starting frame generator loop for {frame_count} frames.")
+    frames_generated = 0
+    time_loop_start = time.perf_counter()
     for i in range(frame_count):
+        percent = frames_generated / frame_count
+        dur = (time.perf_counter() - time_loop_start) / 60
+        if frames_generated > 0:
+            eta = (dur / frames_generated) * (frame_count - frames_generated)
+            print(f"{percent*100:.0f} % ({frames_generated}) of the frames were generated in "
+                  f"{dur:.2f} minutes, ETA in {eta:.0f} minutes")
 
         u_frame = frame_gen()
         for key in meta:
@@ -677,6 +684,7 @@ def generate_frame_series():
             frame = ds[P.naming_frame_data]
             frame.coords[P.dim_scan] = i
             frame_list[i] = frame
+            frames_generated += 1
         else:
             raise NotImplementedError(f"LUT distortion not implemented")
     print(f"Loop finished. ")
@@ -740,7 +748,7 @@ def show_corrected_series():
     for i in range(sl_count):
         sl = distorted_series['frame_attrs'].isel({'sl_idx':i})
         means = sl.mean(dim={'scan_index'})
-        
+
         print(f"mean tilt for sl {i}:\t {means[1].values} -> {means[4].values}")
     for i in range(sl_count):
         sl = distorted_series['frame_attrs'].isel({'sl_idx': i})
@@ -772,8 +780,16 @@ def desmile_series():
     attr_count = len(attr_names)
     # sl_count = distorted_series[P.naming_cube_data].isel({P.dim_scan:0}).attr[P.meta_key_sl_count]
 
+    frames_generated = 0
+    time_loop_start = time.perf_counter()
     for i in range(frame_count):
-        print(f"Processing frame {i}")
+        percent = frames_generated / frame_count
+        dur = (time.perf_counter() - time_loop_start) / 60
+        if frames_generated > 0:
+            eta = (dur / frames_generated) * (frame_count - frames_generated)
+            print(f"{percent * 100:.0f} % ({frames_generated}) of the frames were generated in "
+                  f"{dur:.2f} minutes, ETA in {eta:.0f} minutes")
+
         frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:i})
 #
 #     crop_frame = u_frame.isel({P.dim_x: slice(width_offset, width_offset + width),
@@ -816,6 +832,7 @@ def desmile_series():
 
         attr_da.coords[P.dim_scan] = i
         attr_list[i] = attr_da
+        frames_generated += 1
 
     print(f"Saving frame series as a cube.")
     frames = xr.concat(frame_list, dim=P.dim_scan)
@@ -847,10 +864,10 @@ def desmile_series():
 
 if __name__ == '__main__':
 
-    # generate_frame_series()
+    # generate_frame_series(1000)
     # show_distorted_series()
-    # desmile_series()
-    show_corrected_series()
+    desmile_series()
+    # show_corrected_series()
 
     # light_frame_to_spectrogram()
 
