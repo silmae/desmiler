@@ -718,14 +718,34 @@ def show_corrected_series():
     for i in range(frame_count):
         print(f"Showing frame {i}")
         frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:i})
+        frame_attrs = distorted_series['frame_attrs'].isel({P.dim_scan:i})
 
         if len(frame.attrs) >= 1:
             print(f"Frame metadata from DataArray:")
             for key, val in frame.attrs.items():
                 print(f"\t{key} : \t{val}")
 
-        plt.imshow(frame)
-        plt.show()
+        for i in range(frame_attrs.attr_idx.size):
+            attr_name = frame_attrs.coords['attr_idx'].values[i]
+            attr_vals = frame_attrs.isel({'attr_idx':i}).values
+            mean = np.mean(frame_attrs.isel({'attr_idx':i}).values)
+            std = np.std(frame_attrs.isel({'attr_idx':i}).values)
+            print(f"{attr_name} : {attr_vals} -- {mean} pm {std}")
+
+
+        # plt.imshow(frame)
+        # plt.show()
+
+    sl_count = distorted_series['sl_idx'].size
+    for i in range(sl_count):
+        sl = distorted_series['frame_attrs'].isel({'sl_idx':i})
+        means = sl.mean(dim={'scan_index'})
+        
+        print(f"mean tilt for sl {i}:\t {means[1].values} -> {means[4].values}")
+    for i in range(sl_count):
+        sl = distorted_series['frame_attrs'].isel({'sl_idx': i})
+        means = sl.mean(dim={'scan_index'})
+        print(f"mean curvature for sl {i}: {means[2].values} -> {means[5].values}")
 
 def desmile_series():
     """Desmile and save metadata of the result """
@@ -747,6 +767,11 @@ def desmile_series():
     frame_list = [None]*frame_count
     attr_list = [None]*frame_count
 
+    attr_names = [P.meta_key_location, P.meta_key_tilt, P.meta_key_curvature,
+                  P.meta_key_location + '_c', P.meta_key_tilt + '_c', P.meta_key_curvature + '_c']
+    attr_count = len(attr_names)
+    # sl_count = distorted_series[P.naming_cube_data].isel({P.dim_scan:0}).attr[P.meta_key_sl_count]
+
     for i in range(frame_count):
         print(f"Processing frame {i}")
         frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:i})
@@ -758,22 +783,39 @@ def desmile_series():
         sl_list = sc.construct_spectral_lines(frame, positions, bp, peak_width=peak_width)
 
         # Add metadata for uncorrected spectral lines
-        frame.attrs[P.meta_key_sl_count]  = len(sl_list)
-        frame.attrs[P.meta_key_location]  = [sl.location for sl in sl_list]
-        frame.attrs[P.meta_key_tilt]      = [sl.tilt for sl in sl_list]
-        frame.attrs[P.meta_key_curvature] = [sl.curvature for sl in sl_list]
+        attr_shape = (len(sl_list), attr_count)
+        attr_matrix = np.zeros(attr_shape, np.float)
+        # frame.attrs[P.meta_key_sl_count]  = len(sl_list)
+        attr_matrix[:, 0] = [sl.location for sl in sl_list]
+        attr_matrix[:, 1] = [sl.tilt for sl in sl_list]
+        attr_matrix[:, 2] = [sl.curvature for sl in sl_list]
 
         shift_matrix = sc.construct_shift_matrix(sl_list, frame[P.dim_x].size, frame[P.dim_y].size)
         frame = sc.apply_shift_matrix(frame, shift_matrix=shift_matrix, method=0, target_is_cube=False)
         sl_list_corrected = sc.construct_spectral_lines(frame, positions, bp, peak_width=peak_width)
 
-        frame.attrs[P.meta_key_location + '_c']  = [sl.location for sl in sl_list_corrected]
-        frame.attrs[P.meta_key_tilt + '_c']      = [sl.tilt for sl in sl_list_corrected]
-        frame.attrs[P.meta_key_curvature + '_c'] = [sl.curvature for sl in sl_list_corrected]
+        attr_matrix[:, 3] = [sl.location for sl in sl_list_corrected]
+        attr_matrix[:, 4] = [sl.tilt for sl in sl_list_corrected]
+        attr_matrix[:, 5] = [sl.curvature for sl in sl_list_corrected]
 
         frame.coords[P.dim_scan] = i
         frame_list[i] = frame
-        attr_list[i] = xr.DataArray(frame.attrs)
+        # attr_da = xr.DataArray(attr_matrix)
+
+        coords = {
+            'sl_idx': ('sl_idx', np.arange(0, len(sl_list))),
+            'attr_idx': ('attr_idx', attr_names),
+        }
+        dims = ('sl_idx', 'attr_idx')
+        attr_da = xr.DataArray(
+            attr_matrix,
+            name='attr_array',
+            dims=dims,
+            coords=coords,
+        )
+
+        attr_da.coords[P.dim_scan] = i
+        attr_list[i] = attr_da
 
     print(f"Saving frame series as a cube.")
     frames = xr.concat(frame_list, dim=P.dim_scan)
@@ -781,7 +823,7 @@ def desmile_series():
     cube = xr.Dataset(
         data_vars={
             P.naming_cube_data: frames,
-            'frame_attrs' : frame_attrs,
+            'frame_attrs': frame_attrs,
         },
     )
     F.save_cube(cube, save_path)
@@ -807,8 +849,8 @@ if __name__ == '__main__':
 
     # generate_frame_series()
     # show_distorted_series()
-    desmile_series()
-    # show_corrected_series()
+    # desmile_series()
+    show_corrected_series()
 
     # light_frame_to_spectrogram()
 
