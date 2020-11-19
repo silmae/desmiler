@@ -755,8 +755,12 @@ def show_corrected_series():
         means = sl.mean(dim={'scan_index'})
         print(f"mean curvature for sl {i}: {means[2].values} -> {means[5].values}")
 
-def desmile_series():
+def desmile_series(first=0, last=1000):
     """Desmile and save metadata of the result """
+
+    print(f"Starting series correction from {first} to {last}.")
+
+    flag_fail = False
 
     control = toml.loads(P.example_scan_control_content)
     width = control[P.ctrl_scan_settings][P.ctrl_width]
@@ -770,6 +774,7 @@ def desmile_series():
     save_path = P.path_example_frames + 'corrected_series'
     load_path = P.path_example_frames + 'distorted_series'
     distorted_series = F.load_cube(load_path)
+    distorted_series = distorted_series.isel({P.dim_scan:slice(first,last+1)})
     frame_count = distorted_series[P.naming_cube_data][P.dim_scan].size
 
     frame_list = [None]*frame_count
@@ -778,25 +783,58 @@ def desmile_series():
     attr_names = [P.meta_key_location, P.meta_key_tilt, P.meta_key_curvature,
                   P.meta_key_location + '_c', P.meta_key_tilt + '_c', P.meta_key_curvature + '_c']
     attr_count = len(attr_names)
-    # sl_count = distorted_series[P.naming_cube_data].isel({P.dim_scan:0}).attr[P.meta_key_sl_count]
+
+    def save_part(last_success):
+        if last_success >= first:
+            save_path_part = os.path.abspath(save_path + f'_{first}_{last_success}')
+            print(f"Saving frame series from {first} to {last_success} as a cube.")
+            frames = xr.concat(frame_list[first:last_success+1], dim=P.dim_scan)
+            frame_attrs = xr.concat(attr_list[first:last_success+1], dim=P.dim_scan)
+            cube = xr.Dataset(
+                data_vars={
+                    P.naming_cube_data: frames,
+                    'frame_attrs': frame_attrs,
+                },
+            )
+            F.save_cube(cube, save_path_part)
+            print(f"Series cube saved to {save_path_part}")
+
+        next_frame = last_success + 2
+        if next_frame < last:
+            print(f"Restarting desmiling from frame {next_frame}")
+            desmile_series(next_frame, last)
 
     frames_generated = 0
+    curr_frame = first
     time_loop_start = time.perf_counter()
-    for i in range(frame_count):
+    for _ in range(first, last+1):
+
         percent = frames_generated / frame_count
         dur = (time.perf_counter() - time_loop_start) / 60
         if frames_generated > 0:
             eta = (dur / frames_generated) * (frame_count - frames_generated)
-            print(f"{percent * 100:.0f} % ({frames_generated}) of the frames were generated in "
+            print(f"{percent * 100:.0f} % ({frames_generated}/{frame_count}) of the frames were corrected in "
                   f"{dur:.2f} minutes, ETA in {eta:.0f} minutes")
-
-        frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:i})
-#
-#     crop_frame = u_frame.isel({P.dim_x: slice(width_offset, width_offset + width),
-#                                P.dim_y: slice(height_offset, height_offset + height)})
+        # try:
+        frame = distorted_series[P.naming_cube_data].sel({P.dim_scan:curr_frame})
+        # except:
+        #     print(f"Problem in isel")
+        #     break
 
         bp = sc.construct_bandpass_filter(frame, positions, bandpass_width)
         sl_list = sc.construct_spectral_lines(frame, positions, bp, peak_width=peak_width)
+        sl_count = len(sl_list)
+
+        #testing
+        if curr_frame == 1:
+            sl_count = 324
+        if curr_frame == 3:
+            sl_count = 324
+
+        if sl_count != 4:
+            print(f"Frame {curr_frame} failed.")
+            flag_fail = True
+            break
 
         # Add metadata for uncorrected spectral lines
         attr_shape = (len(sl_list), attr_count)
@@ -814,8 +852,8 @@ def desmile_series():
         attr_matrix[:, 4] = [sl.tilt for sl in sl_list_corrected]
         attr_matrix[:, 5] = [sl.curvature for sl in sl_list_corrected]
 
-        frame.coords[P.dim_scan] = i
-        frame_list[i] = frame
+        frame.coords[P.dim_scan] = curr_frame
+        frame_list[curr_frame] = frame
         # attr_da = xr.DataArray(attr_matrix)
 
         coords = {
@@ -830,21 +868,12 @@ def desmile_series():
             coords=coords,
         )
 
-        attr_da.coords[P.dim_scan] = i
-        attr_list[i] = attr_da
+        attr_da.coords[P.dim_scan] = curr_frame
+        attr_list[curr_frame] = attr_da
         frames_generated += 1
+        curr_frame += 1
 
-    print(f"Saving frame series as a cube.")
-    frames = xr.concat(frame_list, dim=P.dim_scan)
-    frame_attrs = xr.concat(attr_list, dim=P.dim_scan)
-    cube = xr.Dataset(
-        data_vars={
-            P.naming_cube_data: frames,
-            'frame_attrs': frame_attrs,
-        },
-    )
-    F.save_cube(cube, save_path)
-    print(f"Series cube saved to {save_path}")
+    save_part(curr_frame-1)
 
 #     # TODO the mean curvature is not very good estimator as shallow curves may be in both directions
 #     meta[key_curvature_measured_mean] = np.mean(np.array([sl.curvature for sl in sl_list]))
@@ -866,7 +895,7 @@ if __name__ == '__main__':
 
     # generate_frame_series(1000)
     # show_distorted_series()
-    desmile_series()
+    desmile_series(0,5)
     # show_corrected_series()
 
     # light_frame_to_spectrogram()
