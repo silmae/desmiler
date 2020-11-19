@@ -777,8 +777,8 @@ def desmile_series(first=0, last=1000):
     distorted_series = distorted_series.isel({P.dim_scan:slice(first,last+1)})
     frame_count = distorted_series[P.naming_cube_data][P.dim_scan].size
 
-    frame_list = [None]*frame_count
-    attr_list = [None]*frame_count
+    frame_list = []
+    attr_list = []
 
     attr_names = [P.meta_key_location, P.meta_key_tilt, P.meta_key_curvature,
                   P.meta_key_location + '_c', P.meta_key_tilt + '_c', P.meta_key_curvature + '_c']
@@ -788,8 +788,8 @@ def desmile_series(first=0, last=1000):
         if last_success >= first:
             save_path_part = os.path.abspath(save_path + f'_{first}_{last_success}')
             print(f"Saving frame series from {first} to {last_success} as a cube.")
-            frames = xr.concat(frame_list[first:last_success+1], dim=P.dim_scan)
-            frame_attrs = xr.concat(attr_list[first:last_success+1], dim=P.dim_scan)
+            frames = xr.concat(frame_list, dim=P.dim_scan)
+            frame_attrs = xr.concat(attr_list, dim=P.dim_scan)
             cube = xr.Dataset(
                 data_vars={
                     P.naming_cube_data: frames,
@@ -816,7 +816,8 @@ def desmile_series(first=0, last=1000):
             print(f"{percent * 100:.0f} % ({frames_generated}/{frame_count}) of the frames were corrected in "
                   f"{dur:.2f} minutes, ETA in {eta:.0f} minutes")
         # try:
-        frame = distorted_series[P.naming_cube_data].sel({P.dim_scan:curr_frame})
+        frame = distorted_series[P.naming_cube_data].isel({P.dim_scan:curr_frame-first})
+        # frame = distorted_series[P.naming_cube_data]
         # except:
         #     print(f"Problem in isel")
         #     break
@@ -825,15 +826,8 @@ def desmile_series(first=0, last=1000):
         sl_list = sc.construct_spectral_lines(frame, positions, bp, peak_width=peak_width)
         sl_count = len(sl_list)
 
-        #testing
-        if curr_frame == 1:
-            sl_count = 324
-        if curr_frame == 3:
-            sl_count = 324
-
         if sl_count != 4:
             print(f"Frame {curr_frame} failed.")
-            flag_fail = True
             break
 
         # Add metadata for uncorrected spectral lines
@@ -847,13 +841,17 @@ def desmile_series(first=0, last=1000):
         shift_matrix = sc.construct_shift_matrix(sl_list, frame[P.dim_x].size, frame[P.dim_y].size)
         frame = sc.apply_shift_matrix(frame, shift_matrix=shift_matrix, method=0, target_is_cube=False)
         sl_list_corrected = sc.construct_spectral_lines(frame, positions, bp, peak_width=peak_width)
+        
+        if len(sl_list_corrected) != 4:
+            print(f"Frame {curr_frame}, not enough lines found in corrected frame.")
+            break
 
         attr_matrix[:, 3] = [sl.location for sl in sl_list_corrected]
         attr_matrix[:, 4] = [sl.tilt for sl in sl_list_corrected]
         attr_matrix[:, 5] = [sl.curvature for sl in sl_list_corrected]
 
         frame.coords[P.dim_scan] = curr_frame
-        frame_list[curr_frame] = frame
+        frame_list.append(frame)
         # attr_da = xr.DataArray(attr_matrix)
 
         coords = {
@@ -869,7 +867,7 @@ def desmile_series(first=0, last=1000):
         )
 
         attr_da.coords[P.dim_scan] = curr_frame
-        attr_list[curr_frame] = attr_da
+        attr_list.append(attr_da)
         frames_generated += 1
         curr_frame += 1
 
@@ -895,7 +893,7 @@ if __name__ == '__main__':
 
     # generate_frame_series(1000)
     # show_distorted_series()
-    desmile_series(0,5)
+    desmile_series(0,999)
     # show_corrected_series()
 
     # light_frame_to_spectrogram()
