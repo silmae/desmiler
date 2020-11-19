@@ -760,15 +760,27 @@ def show_attrs():
 
     load_path = P.path_example_frames + 'series_attrs'
     attrs_cube = F.load_cube(load_path)
-    frame_count = attrs_cube[P.dim_scan].size
+
+    headers = ['SL','Band', '\\multicolumn{2}{c|}{Tilt}', '\\multicolumn{2}{c|}{Curveture}']
+    sub_headers = ['Original','Corrected']
+
+    metaLines = []
+    metaLines.append(f"\\sisetup{{scientific-notation = engineering, \n\tseparate-uncertainty = true\n}}\n")
+    metaLines.append(f"\\begin{{tabular}}{{ {' r' * 6} }}\n")
+    metaLines.append(f"\\toprule\n")
+    metaLines.append(f"{' & '.join(headers)} \\\\\n")
+    metaLines.append(f"\\midrule\n")
+    metaLines.append(f" & & {' & '.join(sub_headers)} & {' & '.join(sub_headers)} \\\\\n")
 
     sl_count = attrs_cube['sl_idx'].size
+    p = 9
     for i in range(sl_count):
         sl = attrs_cube.isel({'sl_idx':i})
         means = sl.mean(dim={'scan_index'})
         stds = sl.std(dim={'scan_index'})
 
         print(f"sl {i}")
+        data_line = str(i)
         for j in range(3):
             orig_name = means.attr_idx[j].item()
             corr_name = means.attr_idx[j+3].item()
@@ -777,26 +789,53 @@ def show_attrs():
             orig_std = stds.dn[j].item()
             corr_std = stds.dn[j+3].item()
             impr = (corr / orig) * 100
-
-            stuff = (f"{orig_name} -> {corr_name}: "
-                  f"{orig} (pm {orig_std}) -> {corr} (pm {corr_std}) ({impr}%)")
-            print(stuff)
-
+            # data.append(orig, orig_std, corr, corr_std)
+        # stuff = (f"{i} "
+        #          f""
+        #          f"{orig_name} -> {corr_name}: "
+        #       f"{orig} (pm {orig_std}) -> {corr} (pm {corr_std}) ({impr}%)")
             if j == 0:
                 location_shift = math.fabs(orig - corr)
-                print(f"location change {location_shift} px")
-            if j == 2:
-                orig_r = 1 / orig
-                corr_r = 1 / corr
-                h = 400
-                orig_smile_px = math.atan(h/orig_r)
-                corr_smile_px = math.atan(h/corr_r)
-                print(f"smile from {orig_smile_px} to {corr_smile_px}")
+                # print(f"location change {location_shift} px")
+                data_line += f" &  {int(orig)} "
+            else:
+                data_line += f' & {siunitxFormat(p, orig, orig_std)} & {siunitxFormat(p, corr, corr_std)}'
+        data_line += ' \\\\\n'
+        metaLines.append(data_line)
+        # print(stuff)
 
-    # for i in range(sl_count):
-    #     sl = attrs_cube.isel({'sl_idx': i})
-    #     means = sl.mean(dim={'scan_index'})
-    #     print(f"mean curvature for sl {i}: {means[2].values} -> {means[5].values}")
+
+
+            # if j == 0:
+            #     location_shift = math.fabs(orig - corr)
+            #     print(f"location change {location_shift} px")
+            # if j == 2:
+            #     orig_r = 1 / orig
+            #     corr_r = 1 / corr
+            #     h = 400
+            #     orig_smile_px = math.atan(h/orig_r)
+            #     corr_smile_px = math.atan(h/corr_r)
+            #     print(f"smile from {orig_smile_px} to {corr_smile_px}")
+        # metaLines.append(
+        #     f"{j + 1} & {siunitxFormat(p, oMean[j], oErr[j])} & {siunitxFormat(p, dMean[j], dErr[j])} \\\\\n")
+
+    metaLines.append(f"\\addlinespace\n")
+    # metaLines.append(
+    #     f"Mean & {siunitxFormat(p, np.mean(oMean), sc.stats.sem(oMean))}  & {siunitxFormat(p, np.mean(dMean), sc.stats.sem(dMean))} \\\\\n")
+    metaLines.append(f"\\bottomrule\n")
+    metaLines.append(f"\\end{{tabular}}")
+    for line in metaLines:
+        print(line, end='')
+
+
+
+def siunitxFormat(print_presicion, a, err=None):
+    """ Format a single float or float with error into siunitx number. """
+
+    if err is not None:
+        return "\\num{{{1:,.{0}f} +- {2:,.{0}f}}}".format(print_presicion, a, err)
+    else:
+        return "\\num{{{1:,.{0}f}}}".format(print_presicion, a)
 
 def desmile_series(first=0, last=1000):
     """Desmile and save metadata of the result """
