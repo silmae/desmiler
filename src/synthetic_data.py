@@ -755,6 +755,49 @@ def show_corrected_series():
         means = sl.mean(dim={'scan_index'})
         print(f"mean curvature for sl {i}: {means[2].values} -> {means[5].values}")
 
+def show_attrs():
+    """Debugging method for series. """
+
+    load_path = P.path_example_frames + 'series_attrs'
+    attrs_cube = F.load_cube(load_path)
+    frame_count = attrs_cube[P.dim_scan].size
+
+    sl_count = attrs_cube['sl_idx'].size
+    for i in range(sl_count):
+        sl = attrs_cube.isel({'sl_idx':i})
+        means = sl.mean(dim={'scan_index'})
+        stds = sl.std(dim={'scan_index'})
+
+        print(f"sl {i}")
+        for j in range(3):
+            orig_name = means.attr_idx[j].item()
+            corr_name = means.attr_idx[j+3].item()
+            orig =  means.dn[j].item()
+            corr = means.dn[j+3].item()
+            orig_std = stds.dn[j].item()
+            corr_std = stds.dn[j+3].item()
+            impr = (corr / orig) * 100
+
+            stuff = (f"{orig_name} -> {corr_name}: "
+                  f"{orig} (pm {orig_std}) -> {corr} (pm {corr_std}) ({impr}%)")
+            print(stuff)
+
+            if j == 0:
+                location_shift = math.fabs(orig - corr)
+                print(f"location change {location_shift} px")
+            if j == 2:
+                orig_r = 1 / orig
+                corr_r = 1 / corr
+                h = 400
+                orig_smile_px = math.atan(h/orig_r)
+                corr_smile_px = math.atan(h/corr_r)
+                print(f"smile from {orig_smile_px} to {corr_smile_px}")
+
+    # for i in range(sl_count):
+    #     sl = attrs_cube.isel({'sl_idx': i})
+    #     means = sl.mean(dim={'scan_index'})
+    #     print(f"mean curvature for sl {i}: {means[2].values} -> {means[5].values}")
+
 def desmile_series(first=0, last=1000):
     """Desmile and save metadata of the result """
 
@@ -841,7 +884,7 @@ def desmile_series(first=0, last=1000):
         shift_matrix = sc.construct_shift_matrix(sl_list, frame[P.dim_x].size, frame[P.dim_y].size)
         frame = sc.apply_shift_matrix(frame, shift_matrix=shift_matrix, method=0, target_is_cube=False)
         sl_list_corrected = sc.construct_spectral_lines(frame, positions, bp, peak_width=peak_width)
-        
+
         if len(sl_list_corrected) != 4:
             print(f"Frame {curr_frame}, not enough lines found in corrected frame.")
             break
@@ -873,6 +916,43 @@ def desmile_series(first=0, last=1000):
 
     save_part(curr_frame-1)
 
+def loop_series():
+
+    load_path = os.path.abspath(P.path_example_frames)
+    file_count = 0
+    frame_count = 0
+    frame_attr_list = []
+    for filename in os.listdir(load_path):
+        filename = filename.rstrip(".nc")
+        split = filename.split('_')
+        if split[0] == 'corrected' and split[1] == 'series':
+            start = int(split[2])
+            end = int(split[3])
+            print(f"range from {start} to {end}")
+            frame_count += end-start
+            file_count += 1
+
+            cube = F.load_cube(load_path + '/' + filename)
+            frame_attrs = cube['frame_attrs']
+            frame_attr_list.append(frame_attrs)
+            continue
+        else:
+            # print(f"Refejcted '{filename}'")
+            continue
+
+    print(f"Counted {file_count} files in total")
+    print(f"Counted {frame_count} frames in total")
+
+    attrs = xr.concat(frame_attr_list, dim=P.dim_scan)
+    cube = xr.Dataset(
+        data_vars={
+            P.naming_cube_data: attrs,
+        },
+    )
+
+    F.save_cube(cube, P.path_example_frames + '/' + 'series_attrs')
+
+
 #     # TODO the mean curvature is not very good estimator as shallow curves may be in both directions
 #     meta[key_curvature_measured_mean] = np.mean(np.array([sl.curvature for sl in sl_list]))
 #     meta[key_tilt_measured_mean] = np.mean(np.array([sl.tilt_angle_degree_abs for sl in sl_list]))
@@ -893,8 +973,10 @@ if __name__ == '__main__':
 
     # generate_frame_series(1000)
     # show_distorted_series()
-    desmile_series(0,999)
+    # desmile_series(0,999)
     # show_corrected_series()
+    # loop_series()
+    show_attrs()
 
     # light_frame_to_spectrogram()
 
