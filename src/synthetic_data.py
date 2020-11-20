@@ -773,7 +773,8 @@ def show_attrs():
     metaLines.append(f" & & {' & '.join(sub_headers)} & {' & '.join(sub_headers)} \\\\\n")
 
     sl_count = attrs_cube['sl_idx'].size
-    p = 9
+    frame_count = attrs_cube[P.dim_scan].size
+    print(f"Frame count {frame_count}")
     for i in range(sl_count):
         sl = attrs_cube.isel({'sl_idx':i})
         means = sl.mean(dim={'scan_index'})
@@ -1022,14 +1023,16 @@ def loop_series():
 
 if __name__ == '__main__':
 
+    # light_frame_to_spectrogram()
+
+
+
     # generate_frame_series(1000)
     # show_distorted_series()
     # desmile_series(0,999)
     # show_corrected_series()
     # loop_series()
     show_attrs()
-
-    # light_frame_to_spectrogram()
 
     # generate_frame_examples()
     # generate_cube_examples()
