@@ -780,7 +780,7 @@ def show_attrs():
         stds = sl.std(dim={'scan_index'})
 
         print(f"sl {i}")
-        data_line = str(i)
+        data_line = str(i+1)
         for j in range(3):
             orig_name = means.attr_idx[j].item()
             corr_name = means.attr_idx[j+3].item()
@@ -788,40 +788,52 @@ def show_attrs():
             corr = means.dn[j+3].item()
             orig_std = stds.dn[j].item()
             corr_std = stds.dn[j+3].item()
-            impr = (corr / orig) * 100
-            # data.append(orig, orig_std, corr, corr_std)
-        # stuff = (f"{i} "
-        #          f""
-        #          f"{orig_name} -> {corr_name}: "
-        #       f"{orig} (pm {orig_std}) -> {corr} (pm {corr_std}) ({impr}%)")
+            # impr = (corr / orig) * 100
+            # print(f"{orig_name} improvement {impr}")
             if j == 0:
-                location_shift = math.fabs(orig - corr)
-                # print(f"location change {location_shift} px")
                 data_line += f" &  {int(orig)} "
             else:
+                if j==1:
+                    p = 3
+                else:
+                    p = 9
                 data_line += f' & {siunitxFormat(p, orig, orig_std)} & {siunitxFormat(p, corr, corr_std)}'
+            if j == 0:
+                location_shift = orig - corr
+                print(f"location change {location_shift} px")
+            if j == 2:
+                orig_r = 1 / orig
+                corr_r = 1 / corr
+                h = 400
+                orig_smile_px = math.atan(h/orig_r)
+                corr_smile_px = math.atan(h/corr_r)
+                print(f"smile from {orig_smile_px} px to {corr_smile_px} px")
         data_line += ' \\\\\n'
         metaLines.append(data_line)
         # print(stuff)
 
 
 
-            # if j == 0:
-            #     location_shift = math.fabs(orig - corr)
-            #     print(f"location change {location_shift} px")
-            # if j == 2:
-            #     orig_r = 1 / orig
-            #     corr_r = 1 / corr
-            #     h = 400
-            #     orig_smile_px = math.atan(h/orig_r)
-            #     corr_smile_px = math.atan(h/corr_r)
-            #     print(f"smile from {orig_smile_px} to {corr_smile_px}")
         # metaLines.append(
         #     f"{j + 1} & {siunitxFormat(p, oMean[j], oErr[j])} & {siunitxFormat(p, dMean[j], dErr[j])} \\\\\n")
 
     metaLines.append(f"\\addlinespace\n")
-    # metaLines.append(
-    #     f"Mean & {siunitxFormat(p, np.mean(oMean), sc.stats.sem(oMean))}  & {siunitxFormat(p, np.mean(dMean), sc.stats.sem(dMean))} \\\\\n")
+
+    sl_means = attrs_cube.mean(dim='sl_idx').mean(dim={'scan_index'})
+    sl_std = attrs_cube.std(dim='sl_idx').mean(dim={'scan_index'})
+    for j in range(1,3):
+        orig = sl_means.dn[j].item()
+        corr = sl_means.dn[j + 3].item()
+        orig_std = sl_std.dn[j].item()
+        corr_std = sl_std.dn[j + 3].item()
+        if j == 1:
+            p = 3
+            metaLines.append(f"Mean & {siunitxFormat(p, orig, orig_std)}  & {siunitxFormat(p, corr, corr_std)}")
+        else:
+            p = 9
+            metaLines.append(f" & {siunitxFormat(p, orig, orig_std)}  & {siunitxFormat(p, corr, corr_std)} \\\\\n")
+
+
     metaLines.append(f"\\bottomrule\n")
     metaLines.append(f"\\end{{tabular}}")
     for line in metaLines:
