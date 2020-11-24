@@ -8,25 +8,17 @@ from core import properties as P
 from utilities import file_handling as F
 from utilities.numeric import clamp
 
-from core import scan as scan
-
-# Under what name the data is in the cube. 
-cube_data_name = 'dn'
-
 # General calculations to form false color images, spectral angle maps, etc.
 # --------------------------
 
-def calculate_false_color_images(org, lut, intr, viewable):
+def calculate_false_color_images(org, lut, intr, viewable, spectral_blue, spectral_green, spectral_red):
     """ Calculate false color images for all three cubes.
 
     Expects to find color checker blue, green, and red tile from 
     hard coded areas.
     """
 
-    rBand = np.arange(1300,1500)
-    gBand = np.arange(660,860)
-    bBand = np.arange(300, 500)
-    rgb = np.array([rBand, gBand, bBand])
+    rgb = np.array([spectral_red, spectral_green, spectral_blue])
     # Assumes that dimensions are ordered (P.dim_scan, P.dim_y, P.dim_x)
     org_mean = np.mean(org[viewable].values[:,:,rgb], axis=3).astype(np.float32)
     lut_mean = np.mean(lut[viewable].values[:,:,rgb], axis=3).astype(np.float32)
@@ -161,6 +153,9 @@ class CubeInspector:
         # Toggle mode 3 between radians and dot product.
         self.toggle_radians = False
 
+        # Define spectral are to use in false color construction
+        self.reinit_false_color_spectra()
+
         # Matplotlib figure and axis.
         self.fig = None
         self.ax = None
@@ -203,11 +198,20 @@ class CubeInspector:
         self.decorations_selection = []
         self.decorations_box = []
 
+    def reinit_false_color_spectra(self):
+        if self.use_session_control:
+            self.spectral_blue = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_blue]
+            self.spectral_green = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_green]
+            self.spectral_red = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_red]
+        else:
+            self.spectral_blue = np.arange(300, 500)
+            self.spectral_green = np.arange(660, 860)
+            self.spectral_red = np.arange(1300, 1500)
+
     def reload_control(self):
         self.control = F.load_control_file(self.path_control)
 
     def reinit_spectral_filter(self):
-        self.reload_control()
         # Filter one third from the middle of the spectrum by default.
         lin_spectr = np.linspace(0, self.spectral_filter_max, 4, dtype=np.int)
         if self.use_session_control:
@@ -347,7 +351,9 @@ class CubeInspector:
                 self.spectral_filter = slice(low, high)
                 self.show(force_update=True)
             if key == 'u':
+                self.reload_control()
                 self.reinit_spectral_filter()
+                self.reinit_false_color_spectra()
                 self.show(force_update=True)
     
     def show(self, x=None, y=None, band=None, mode=None, force_update=False, sam_ref_x=None, spectral_filter=None):
@@ -420,7 +426,9 @@ class CubeInspector:
             self.ax[1,0].set_title(f'INTR, band={self.x}', color=self.colors_org_lut_intr[2])
         elif self.mode == 2:
             if not self.false_color_calculated:
-                self.org_false, self.lut_false, self.intr_false = calculate_false_color_images(self.org, self.lut, self.intr, self.viewable)
+                self.org_false, self.lut_false, self.intr_false = calculate_false_color_images(
+                    self.org, self.lut, self.intr, self.viewable,
+                    self.spectral_blue, self.spectral_green, self.spectral_red)
                 self.false_color_calculated = True
 
             self.images[0].set_data(self.org_false)

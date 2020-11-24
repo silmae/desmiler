@@ -68,6 +68,9 @@ example_scan_name = 'example_scan'
 
 ctrl_cube_inspector = 'cube_inspector'
 ctrl_spectral_filter = 'spectral_filter'
+ctrl_spectral_blue = 'spectral_blue'
+ctrl_spectral_green = 'spectral_green'
+ctrl_spectral_red = 'spectral_red'
 
 ctrl_scan_settings = 'scan_settings'
 ctrl_is_mock_scan = 'is_mock_scan'
@@ -93,6 +96,12 @@ f"""
 
 [{ctrl_cube_inspector}]
     {ctrl_spectral_filter}      = [500,1000]
+
+    # Define spectral areas of RGB to be used in false color image construction.
+    # Use cube inspector's spectrogram to find correct areas.
+    {ctrl_spectral_blue}        = [300, 500]
+    {ctrl_spectral_green}       = [660, 860]
+    {ctrl_spectral_red}         = [1300, 1500]
 
 # Settings related to the scan. 
 [{ctrl_scan_settings}]
