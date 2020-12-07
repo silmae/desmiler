@@ -1,4 +1,10 @@
+"""
 
+This file contains some common cube manipulation methods.
+
+TODO move all cube manipulation here.
+
+"""
 import xarray as xr
 from xarray import Dataset
 from xarray import DataArray
@@ -11,6 +17,22 @@ import core.frame_manipulation as fm
 def make_reflectance_cube(raw_cube, dark_frame, white_frame, control) -> Dataset:
     """ Makes a reflectance cube out of a raw cube.
 
+    Parameters
+    ----------
+        raw_cube: xarray Dataset
+            Hyperspectral raw cube to make into reflectance cube.
+        dark_frame: xarray Dataset
+            Dark reference frame for dark current correction.
+        white_frame: xarray Dataset
+            White reference frame for reflectance calculation.
+        control: dict
+            Control file content as dict.
+
+    Returns
+    -------
+        rfl: xarray Dataset
+            Resulting reflectance cube.
+
     Raises
     ------
         ValueError
@@ -19,7 +41,6 @@ def make_reflectance_cube(raw_cube, dark_frame, white_frame, control) -> Dataset
 
 
     if white_frame is None:
-        # FIXME this is stupid. We can allow option to use an area of the cube as white reference.
         raise ValueError(f"White frame must be provided for reflectance calculations. Was None.")
 
     rfl = raw_cube.copy(deep=True)
@@ -42,17 +63,8 @@ def make_reflectance_cube(raw_cube, dark_frame, white_frame, control) -> Dataset
         old_data_name = P.naming_cube_data
 
     print(f"Dividing by white frame...", end=' ')
-    # Y coordinates of the reference white (teflon block)
-    # Along scan white reference area.
-    use_area_from_cube = False
-    if use_area_from_cube:
-        white_ref_scan_slice = slice(410, 490)
-        # Along scan white reference area.
-        # white = (org.dn_dark_corrected.isel({d_along_scan: white_ref_scan_slice})).mean(dim=(d_along_scan)).astype(
-        #     np.float32)
-    else:
-        white = fm.crop_to_size(white_frame, control)
-        white = white[P.naming_frame_data]
+    white = fm.crop_to_size(white_frame, control)
+    white = white[P.naming_frame_data]
 
     # rfl = rfl.transpose(*P.dim_order_cube)
     # # Uncomment to drop lowest pixel values to zero
