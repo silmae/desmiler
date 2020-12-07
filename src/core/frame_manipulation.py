@@ -1,4 +1,8 @@
+"""
 
+Unfinished frame manipulation file. Should contain all common frame operations.
+
+"""
 import numpy as np
 import xarray as xr
 
@@ -9,6 +13,13 @@ def crop_to_size(source_frame, control):
 
     Resets the coordinates as if the frame was acquired with cropping dimensions,
     i.e., the coordinates will start from 0.5 and run to frame.dim.size - 0.5.
+
+    Parameters
+    ----------
+        source_frame: xarray Dataset
+            Frame to be cropped.
+        control: dict
+            Control file content as a dictionary.
     """
     width = control[P.ctrl_scan_settings][P.ctrl_width]
     width_offset = control[P.ctrl_scan_settings][P.ctrl_width_offset]
