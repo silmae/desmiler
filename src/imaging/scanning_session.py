@@ -1,27 +1,21 @@
 """
 
-Some control over sessions to create metadata and
-correct folder structure.
+Scanning session binds all relevant data of a scan into the directory structure.
+Each scan has its own folder under "scans" directory. A full scan folder contains
+the following files:
+- control.toml (program parameters for controlling the scan, CubeInspector, smile correction process, etc.)
+- camera_settings.toml (for camera settings. This might not work yet properly)
+- dark.nc (dark reference frame for dark current correction)
+- white.nc (white reference frame for reflectance calculations)
+- light.nc (dark reference frame for smile correction)
+- raw.nc (the actual scanned hyperspectral image cube)
 
-Order:
-
-    if new session:
-        - generate default control file and close it
-        - copy default camera settings from main directory and close it
-        - both files can now be edited and saved before imaging
-        - load both control files when initializing the camera
-        - shoot (dark, white, light) images and save to session directory
-        - start scanning
-    if existing session:
-        - load control files
-        - load existing dark, white, light frames
-        - start scanning (TODO how to deal with multiple scans in the same session?)
+A template of the control.toml will be generated upon creation of the ScanningSession object.
 
 """
 
 import logging
 import toml
-from toml import TomlDecodeError
 import numpy as np
 import os
 import xarray as xr
@@ -31,7 +25,6 @@ from core import properties as P
 from utilities import file_handling as F
 from core.camera_interface import CameraInterface
 from core import smile_correction as sc
-import core.frame_manipulation as fm
 import core.cube_manipulation as cm
 from analysis.cube_inspector import CubeInspector
 import analysis.frame_inspector as fi
@@ -39,20 +32,28 @@ import time
 import math
 import matplotlib.pyplot as plt
 
-import analysis.cube_inspector as ci
+def create_example_scan():
+    """Creates an example scan. Overwrites existing ones if any."""
 
+    example_sc = ScanningSession(P.example_scan_name)
+    example_sc.generate_default_scan_control()
+
+
+"""
+Scanning session binds all relevant data of a scan into the directory structure.
+"""
 class ScanningSession:
 
     def __init__(self, session_name:str):
         """Initializes new scanning session with given name.
 
-        Creates a default directory (/scans/session_name) if it does not yet exist. If it
+        Creates a default directory (/scans/<session_name>) if it does not yet exist. If it
         exists, the existing files are loaded.
 
         Parameters
         ----------
-        session_name
-            Name of the session.
+        session_name : str
+            Name of the session either existing or a new one.
         """
 
         self.session_name = session_name
@@ -68,10 +69,15 @@ class ScanningSession:
         self.cube_desmiled_lut_path = os.path.abspath(self.session_root + P.cube_desmiled_lut + '.nc')
         self.cube_desmiled_intr_path = os.path.abspath(self.session_root + P.cube_desmiled_intr + '.nc')
 
+        # CameraInterface object
         self._cami = None
+        # Contents of the control file as a dictionary
         self.control = None
+        # Dark reference frame
         self.dark = None
+        # White reference frame
         self.white = None
+        # Light reference frame
         self.light = None
 
         if self.session_exists():
@@ -106,7 +112,7 @@ class ScanningSession:
         print(f"Session initialized and ready to work.")
 
     def __del__(self):
-        """Delete object after calling close() for cleanup."""
+        """Deletes the ScanningSession object after calling close() for cleanup."""
 
         self.close()
 
@@ -115,6 +121,7 @@ class ScanningSession:
 
         if self._cami is not None:
             self._cami.turn_off()
+            # FIXME this doesn't really work as it is
             self._cami.save_camera_settings(self.camera_setting_path)
             del self._cami
 
@@ -156,9 +163,13 @@ class ScanningSession:
         self.load_control_file()
 
     def load_control_file(self):
+        """Loads the control file."""
+
         self.control = F.load_control_file(self.scan_settings_path)
 
     def session_exists(self) -> bool:
+        """Returns true if there exists a path "scan/<session_name>" and false otherwise."""
+
         if os.path.exists(self.session_root):
             return True
         else:
@@ -191,7 +202,36 @@ class ScanningSession:
 
         self._shoot_reference(P.ref_light_name)
 
-    def _show_reference(self, ref_type:str):
+    def _shoot_reference(self, ref_type:str):
+        """Shoot a reference frame (dark, white or light) and save to disk.
+
+        Initializes the camera and reloads the settings from disk.
+        """
+
+        self._init_cami()
+        self.reload_settings()
+        if ref_type in (P.ref_dark_name, P.ref_white_name, P.ref_light_name):
+            logging.debug(f"Crop before starting to shoot {ref_type}:\n {self._cami.get_crop_meta_dict()}")
+            old, _ = self._cami._crop(full=True)
+            logging.debug(f"New crop:\n {self._cami.get_crop_meta_dict()}")
+            print(f"Shooting frame (avg of {P.dwl_default_count} with {self._cami.exposure():.1f} micro seconds.)")
+            ref_frame = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
+            meta_dict = self._cami.get_crop_meta_dict()
+            ref_frame = F.save_frame(ref_frame, self.session_root + '/' + ref_type, meta_dict=meta_dict)
+            self._cami._crop(*old)
+            logging.debug(f"Reverted back to crop:\n {self._cami.get_crop_meta_dict()}")
+            if ref_type == P.ref_dark_name:
+                self.dark = ref_frame
+            if ref_type == P.ref_white_name:
+                self.white = ref_frame
+            if ref_type == P.ref_light_name:
+                self.light = ref_frame
+            self._show_reference(ref_type)
+        else:
+            logging.error(f"Wrong reference type '{ref_type}'")
+
+    def _show_reference(self, ref_type: str):
+        """General method to show any of the reference frames. """
 
         if ref_type in (P.ref_dark_name, P.ref_white_name, P.ref_light_name):
 
@@ -202,31 +242,6 @@ class ScanningSession:
             if ref_type == P.ref_light_name:
                 ref_frame = self.light
             fi.plot_frame(ref_frame)
-        else:
-            logging.error(f"Wrong reference type '{ref_type}'")
-
-    def _shoot_reference(self, ref_type:str):
-        """Shoot a reference frame (dark, white or light) and save to disk."""
-
-        self._init_cami()
-        self.reload_settings()
-        if ref_type in (P.ref_dark_name, P.ref_white_name, P.ref_light_name):
-            logging.debug(f"Crop before starting to shoot {ref_type}:\n {self._cami.get_crop_meta_dict()}")
-            old, _ = self._cami.crop(full=True)
-            logging.debug(f"New crop:\n {self._cami.get_crop_meta_dict()}")
-            print(f"Shooting frame (avg of {P.dwl_default_count} with {self._cami.exposure():.1f} micro seconds.)")
-            ref_frame = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
-            meta_dict = self._cami.get_crop_meta_dict()
-            ref_frame = F.save_frame(ref_frame, self.session_root + '/' + ref_type, meta_dict=meta_dict)
-            self._cami.crop(*old)
-            logging.debug(f"Reverted back to crop:\n {self._cami.get_crop_meta_dict()}")
-            if ref_type == P.ref_dark_name:
-                self.dark = ref_frame
-            if ref_type == P.ref_white_name:
-                self.white = ref_frame
-            if ref_type == P.ref_light_name:
-                self.light = ref_frame
-            self._show_reference(ref_type)
         else:
             logging.error(f"Wrong reference type '{ref_type}'")
 
@@ -243,16 +258,8 @@ class ScanningSession:
         mock = self.control[P.ctrl_scan_settings][P.ctrl_is_mock_scan]
         speed = self.control[P.ctrl_scan_settings][P.ctrl_scanning_speed_value]
         length = self.control[P.ctrl_scan_settings][P.ctrl_scanning_length_value]
-        # exposure_time_ms = self._cami.exposure()
-        # exposure_time_mu_s = self.control[P.ctrl_scan_settings][P.ctrl_exporure_time]
         exposure_time_s = self.control[P.ctrl_scan_settings][P.ctrl_exporure_time_s]
         overhead = self.control[P.ctrl_scan_settings][P.ctrl_acquisition_overhead]
-
-        # fps = 1 / (exposure_time_s * (1+exposure_overhead))
-        # scan_time_raw = length / speed
-        # scan_time_w_overhead = scan_time_raw * (1+exposure_overhead)
-        # frame_count = int(scan_time_raw * fps)
-        # frame_time = 1 / fps
 
         time_total = length / speed
         time_frame = exposure_time_s * (overhead + 1)
@@ -261,10 +268,8 @@ class ScanningSession:
         aspect_ratio = frame_count / height
         aspect_ratio_s = f"{frame_count}/{height}"
 
+        # Console printing parameter
         rjust = 30
-
-        #FIXME redo time calculation! we cannot change the time it takes to travel as it is restricted
-        # by the scanning platform.
 
         if mock:
             print(f"Running a mock scan. Just printing you the parameters etc., but not recording data.")
@@ -296,43 +301,6 @@ class ScanningSession:
             # This temporary frame will be overwritten in the loop.
             frame_list[0] = self._cami.get_frame()
 
-            print(f"ExposureMode: {self._cami._cam['ExposureMode'].value}")
-            print(f"ExposureAuto: {self._cami._cam['ExposureAuto'].value}")
-            print(f"pgrExposureCompensationAuto: {self._cami._cam['pgrExposureCompensationAuto'].value}")
-
-            ### Estimate frame time ###
-
-            # test_count = 20
-            # print(self._cami.exposure())
-            # for i in range(test_count):
-            #     time_start = time.perf_counter()
-            #     f = self._cami.get_frame()
-            #     stop = time.perf_counter()
-            #     time_elapsed = stop - time_start
-            #     f.coords[P.dim_scan] = i
-            #     frame_list[i] = f.copy(deep=True)
-            #
-            #     frame_time_list[i] = time_elapsed
-            #
-            # print(self._cami.exposure())
-            # avg_frame_time = np.mean(frame_time_list[0:test_count])
-            # std_frame_time = np.std(frame_time_list[0:test_count])
-            #
-            # plt.plot(frame_time_list[0:test_count])
-            # plt.show()
-            #
-            # print(f"Average frame time was {avg_frame_time:.4f} (+- {std_frame_time:.6f}) s "
-            #       f"while prior estimation was {time_frame:.4f} s.")
-            #
-            # time_frame = avg_frame_time * (overhead+1)
-            # frame_count = math.ceil(time_total / time_frame)
-            # fps = 1 / time_frame
-            #
-            # print(f"Adjusted frame count:".rjust(rjust) + f"\t {frame_count}")
-            # print(f"Adjusted FPS:".rjust(rjust) + f"\t {fps}")
-
-            ### Estimate frame time end ###
-
             frame_list = [None]*frame_count
             frame_time_list = np.zeros((frame_count,), dtype=np.float64)
             wait_time_list = np.zeros((frame_count,), dtype=np.float64)
@@ -345,7 +313,6 @@ class ScanningSession:
                 f = self._cami.get_frame()
                 time_elapsed = (time.perf_counter() - time_start)
                 f.coords[P.dim_scan] = i
-                # frame_list.append(f)
                 frame_list[i] = f.copy(deep=True)
 
                 wait_time = max(time_frame - time_elapsed, 0.0)
@@ -378,7 +345,6 @@ class ScanningSession:
             plt.plot(frame_time_list)
             plt.show()
 
-            # TODO save metadata too
             print("Saving the raw cube")
             frames = xr.concat(frame_list, dim=P.dim_scan)
             raw_cube = xr.Dataset(data_vars={P.naming_cube_data: frames})
@@ -386,11 +352,11 @@ class ScanningSession:
             print("Cube saved")
             self._cami.turn_off()
 
-    def crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
-        """TODO this may be removed... i think. The control file should take care of cropping."""
+    def _crop(self, width=None, width_offset=None, height=None, height_offset=None, full=False):
+        """Set the cropping of the camera. No need to access this directly. """
 
         if self._cami is not None:
-            self._cami.crop(width, width_offset, height, height_offset, full)
+            self._cami._crop(width, width_offset, height, height_offset, full)
         else:
             logging.warning(f"Cannot crop session without a camera.")
 
@@ -434,7 +400,14 @@ class ScanningSession:
     def make_shift_matrix(self):
         """Make shift matrix and save it to disk.
 
-        TODO move elsewhere
+        Returns
+        -------
+            shift_matrix
+                Constructed shift matrix
+            sl_list
+                A list of SpectralLine objects used to create the shift matrix.
+                They contain curvature and angle information of the fitted arcs as well as
+                their locations in the frame.
         """
 
         width = self.control[P.ctrl_scan_settings][P.ctrl_width]
@@ -454,9 +427,8 @@ class ScanningSession:
                                   P.dim_y: slice(height_offset, height_offset + height)})
         light_frame = light_ds[P.naming_frame_data]
         bp = sc.construct_bandpass_filter(light_frame, positions, bandpass_width)
-        sl_list = sc.construct_spectral_lines(light_frame, positions, bp)
+        sl_list = sc.construct_spectral_lines(light_frame, positions, bp, peak_width=peak_width)
         shift_matrix = sc.construct_shift_matrix(sl_list, light_frame[P.dim_x].size, light_frame[P.dim_y].size)
-        # frame_inspector.plot_frame(light_frame, sl_list, True, True, False, 'testing')
 
         abs_path = os.path.abspath(self.shift_path)
         print(f"Saving shift matrix to {abs_path}...", end=' ')
@@ -485,7 +457,6 @@ class ScanningSession:
             Dataset
                 Desmiled cube for chaining.
         """
-
 
         if os.path.exists(os.path.abspath(self.shift_path)):
             logging.info(f"Desmiling with existing shift matrix from '{self.shift_path}'.")
@@ -522,6 +493,17 @@ class ScanningSession:
         return desmiled
 
     def show_cube(self, force_raw_cube=False):
+        """Start the CubeInspector for inspecting the scanned cube.
+
+        A reflection cube is loaded if it exists and force_raw_cube is False. Otherwise, the
+        raw cube is loaded. Desmiled cubes are also loaded if they exist, but if not, the reflectance
+        or the raw cube is used instead.
+
+        Parameters
+        ----------
+            force_raw_cube: bool
+                If true, the reflectance cube is not used even is it exists.
+        """
         try:
             if os.path.exists(self.cube_rfl_path) and not force_raw_cube:
                 target_cube = F.load_cube(self.cube_rfl_path)
@@ -552,26 +534,29 @@ class ScanningSession:
             print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
     def show_shift(self):
+        """Shows the shift matrix of the session."""
+
         s = F.load_shit_matrix(self.shift_path)
         s.plot()
         plt.show()
 
     def show_light(self):
-        # fi.plot_frame(F.load_frame(self.light_path))
+        """Shows the light reference of the session."""
+
         self.reload_settings()
         shift, sl = self.make_shift_matrix()
         fi.plot_frame(self.light, spectral_lines=sl, plot_circ_fit=True, plot_fit_points=True, control=self.control)
 
     def exposure(self, value=None) -> int:
+        """Set of print the exposure of the camera.
+
+        Parameters
+        ----------
+            value: int
+                Exposure time in microseconds. If None, current value of the camera is printed.
+        """
+
         if self._cami is not None:
             return self._cami.exposure(value)
         else:
             logging.warning(f"Cannot set exposure as CameraInterface does not exist.")
-
-def create_example_scan():
-    """Creates an example if does not exist."""
-    # TODO if does not exist
-    example_sc = ScanningSession(P.example_scan_name)
-    example_sc.generate_default_scan_control()
-
-
