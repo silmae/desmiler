@@ -1,7 +1,8 @@
 """
+
 This file contains the core functionality of the smile correction process, i.e.,
-bandpass filter construction, SL construction, shift matrix construction and 
-application.
+bandpass filter construction, spectral line construction, shift matrix construction and
+shift application.
 
 """
 
@@ -23,8 +24,7 @@ def construct_bandpass_filter(peak_light_frame, location_estimates, filter_windo
     Parameters
     ----------
         peak_light_frame : xarray Dataset
-            Frame with spectral lines as Dataset. Expected dimension names 
-            of the array are x and y. Spectral lines are expected to lie 
+            Frame with spectral lines as Dataset. Spectral lines are expected to lie
             along y-dimension.
         location_estimates : list
             User defined estimates of x-location where to find a spectral line. 
@@ -41,9 +41,9 @@ def construct_bandpass_filter(peak_light_frame, location_estimates, filter_windo
             One-dimensional higher limit column-wise filter (same size as peak_light_frame.x).
     """
 
-    # Initialize return values.
-    low = np.zeros(peak_light_frame.x.size)
-    high = np.zeros(peak_light_frame.x.size)
+    # Initialize return values (low and high value vectors are both the width of the frame).
+    low = np.zeros(peak_light_frame[P.dim_x].size)
+    high = np.zeros(peak_light_frame[P.dim_x].size)
     # Half width for calculations.
     w = int(filter_window_width / 2)
     # x-coordinate of previous filter window end point.
@@ -51,7 +51,7 @@ def construct_bandpass_filter(peak_light_frame, location_estimates, filter_windo
 
     for _,le in enumerate(location_estimates):
         try:
-            max_val = peak_light_frame.isel(x=slice(le-w,le+w)).max(dim=['x','y'])
+            max_val = peak_light_frame.isel(x=slice(le-w,le+w)).max(dim=[P.dim_x,P.dim_x])
         except ValueError as ve:
             # Use maximum of the whole frame as a backup.
             max_val = np.max(peak_light_frame.values)
@@ -118,6 +118,7 @@ def construct_spectral_lines(peak_light_frame, location_estimates, bandpass, pea
 
     rowList = np.asarray(rowList)
     accepted_row_index = np.asarray(accepted_row_index)
+
     # Once each row that succesfully found same amount of peaks that there are location_estimates,
     # we can form the actual spectral line objects.
     for i in range(len(rowList[0])):
@@ -189,7 +190,7 @@ def _multi_circle_shift(shift_matrix, spectral_lines, w):
         x_coords.append(pl)
 
         if i == 0 or i == (len(spectral_lines)-1):
-        # Add an element to beginning and end of list        
+            # Add an element to beginning and end of list
             x_coords.append(pl)
 
     # Overwrite the extra elements
@@ -334,10 +335,6 @@ def _intr_shift_cube(cube, shift_matrix):
     )
     ds['desmiled_x'] =  ds[P.dim_x] - ds.x_shift
 
-    # This old stuff is probably broken because new cropping system 6.10.2020
-    # ds.coords['new_x'] = np.linspace(0, cube.reflectance.x.size, cube.reflectance.x.size)
-
-    # This new stuff should fix it
     min_x = cube.reflectance.x.min().item()
     max_x = cube.reflectance.x.max().item()
     ds.coords['new_x'] = np.linspace(min_x, max_x, cube.reflectance.x.size)
