@@ -1,4 +1,8 @@
+"""
 
+This file contains file handling for frames, cubes, etc.
+
+"""
 import os
 import logging
 from core import properties as P
@@ -40,6 +44,8 @@ def save_frame(frame:DataArray, path, meta_dict=None, save_thumbnail=True):
     NOTE: even if the frame is expected to be a DataArray object,
     the saved file will be a Dataset object and the name of the
     frame is defined in core.properties.py file as 'naming_frame_data'.
+
+    Creates and saves also a .png image of the frame for easy debugging.
 
     File extension '.nc' is added if missing.
 
@@ -121,6 +127,7 @@ def load_frame(path) -> Dataset:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), abs_path)
 
 def save_cube(cube:Dataset, path):
+    """Saves an image cube to given path. """
 
     path_s = str(path)
     if not path_s.endswith('.nc'):
@@ -129,7 +136,6 @@ def save_cube(cube:Dataset, path):
 
     cube.to_netcdf(abs_path)
     cube.close()
-
 
 def load_cube(path):
     """ Loads and returns a cube. Closes file handle once done.
@@ -198,6 +204,8 @@ def load_control_file(path):
         logging.warning("Control file not found.")
 
 def save_shift_matrix(shift_matrix:DataArray, path):
+    """Saves a shift matrix to given path."""
+
     path_s = str(path)
     if not path_s.endswith('.nc'):
         path_s = path_s + '.nc'
@@ -209,6 +217,8 @@ def save_shift_matrix(shift_matrix:DataArray, path):
         shift_matrix.close()
 
 def load_shit_matrix(path) -> DataArray:
+    """Loads a shift matrix from given path."""
+
     path_s = str(path)
     if not path_s.endswith('.nc'):
         path_s = path_s + '.nc'
