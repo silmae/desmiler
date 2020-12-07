@@ -1,3 +1,11 @@
+"""
+
+This file contains all curve fitting used for the emission lines:
+least squares circle fit (LSF), LMA circle fit, parabolic arc fit, and a LSF line fit.
+
+"""
+
+
 import scipy.stats as stats
 import scipy.optimize as optimize
 import scipy as sc
