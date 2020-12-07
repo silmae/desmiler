@@ -1,3 +1,9 @@
+"""
+
+This file contains some frame inspection methods. No class to be instanced as these do not need a state.
+
+"""
+
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -87,22 +93,26 @@ def plot_frame(source, spectral_lines=None, plot_fit_points=False, plot_circ_fit
     If spectral lines are given, they can be plotted on top of the frame with a 
     few different styles. Name given here can be used to close the plot window.
 
+    Prints frame's metadata to the console if any are found.
+
     Parameters
     ----------
-    source : DataArray or Dataset
-        Frame to be plotted. Can be a full dataset containing the frame and optional
-        metadata, or just the frame as a DataArray.
-    spectral_lines : list of SpectralLine objects
-        If given, frame is overlayed with spectral lines.
-    plot_fit_points:
-        If True, frame is overlayed with points used to fit the spectral line.
-    plot_circ_fit:
-        If True, frame is overlayed with fitted circle arcs.
-    plot_line_fit:
-        If True, frame is overlayed with fitted lines. 
-    window_name : string,int
-        Name for the plotting window. Use plt.close(<window_name>) to close the window 
-        if needed.    
+        source : DataArray or Dataset
+            Frame to be plotted. Can be a full dataset containing the frame and optional
+            metadata, or just the frame as a DataArray.
+        spectral_lines : list of SpectralLine objects
+            If given, frame is overlayed with spectral lines.
+        plot_fit_points:
+            If True, frame is overlayed with points used to fit the spectral line.
+        plot_circ_fit:
+            If True, frame is overlayed with fitted circle arcs.
+        plot_line_fit:
+            If True, frame is overlayed with fitted lines.
+        window_name : string,int
+            Name for the plotting window. Use plt.close(<window_name>) to close the window
+            if needed.
+        control: dict
+            Control file so that cropping can be taken into account.
     """
 
     frame_ds = None
