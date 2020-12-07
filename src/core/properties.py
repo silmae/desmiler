@@ -1,29 +1,32 @@
-"""A bunch of constants
+"""
+
+A bunch of constants used throughout the program.
 
 """
 
+# Default paths
 path_project_root = '../'
 path_rel_scan = path_project_root + 'scans/'
-
 path_rel_default_cam_settings = path_project_root + 'camera_settings.toml'
+path_example_frames =  path_project_root + 'examples/'
 
+# Used file extensions
 extension_camera_settings = '.toml'
 extension_control = '.toml'
 extension_data_format = '.nc'
 
+# Expected filenames
 fn_camera_settings = 'camera_settings' + extension_camera_settings
 fn_control = 'control' + extension_control
-
 ref_dark_name = 'dark'
 ref_white_name = 'white'
 ref_light_name = 'light'
-
 shift_name = 'shift'
-
 cube_raw_name = 'raw'
 cube_reflectance_name = 'rfl'
 cube_desmiled_lut = 'desmiled_lut'
 cube_desmiled_intr = 'desmiled_intr'
+example_scan_name = 'example_scan'
 
 freeform_session_name = 'freeform'
 
@@ -39,7 +42,6 @@ naming_dark_corrected = 'dark_corrected'
 naming_reflectance = 'reflectance'
 
 ########### Dimension names #############
-# Not iplemented everywhere
 
 dim_x = 'x'
 dim_y = 'y'
@@ -57,14 +59,7 @@ meta_key_curvature = 'curvatures'
 meta_key_sl_X = 'sl_X'
 meta_key_sl_Y = 'sl_Y'
 
-
-
-########### Example related #############
-
-path_example_frames =  path_project_root + 'examples/'
-example_scan_name = 'example_scan'
-
-########### Control file #############
+########### Control file keys #############
 
 ctrl_cube_inspector = 'cube_inspector'
 ctrl_spectral_filter = 'spectral_filter'
@@ -91,10 +86,14 @@ ctrl_wavelengths = 'wavelengths'
 ctrl_window_width = 'window_width'
 ctrl_peak_width = 'peak_width'
 
+########### Default control file content #############
+
 example_scan_control_content =\
 f"""
 
+# Settings related to the CubeInspector. 
 [{ctrl_cube_inspector}]
+    # Spectral filter to be used with SAM
     {ctrl_spectral_filter}      = [500,1000]
 
     # Define spectral areas of RGB to be used in false color image construction.
