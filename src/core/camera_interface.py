@@ -1,9 +1,9 @@
 """
 
-Provides camera interface to be used elswhere in the program.
+Provides camera interface to be used elsewhere in the program.
 Should be easier to swap to a different backend if desired.
 
-This is very simplistic usage of camazing package. We encourage you
+This is very simplistic usage of the camazing library. We encourage you
 to play around and explore its capabilities.
 
 ############# CAMAZING AND MATRIX VISION ##############
@@ -40,6 +40,11 @@ from genicam2.genapi import OutOfRangeException
 cti_path = 'C:/Program Files/MATRIX VISION/mvIMPACT Acquire/bin/x64/mvGenTLProducer.cti'
 
 class CameraInterface:
+    """Camera interface class for frame grabbing.com
+
+    Provides access to some of the most important camera settings, such as exposure time.
+
+    """
 
     # Should not be used directly unless it can't be avoided.
     _cam = None
@@ -168,7 +173,6 @@ class CameraInterface:
             if not cam_was_acquiring:
                 self._cam.stop_acquisition()
         else:
-            frame = None
             frames = []
             for _ in range(count):
                 frames.append(self._cam.get_frame())
@@ -189,8 +193,6 @@ class CameraInterface:
     def exposure(self, value=None) -> int:
         """Set or print exposure"""
 
-        # FIXME always return the value from camera for consistency
-
         if value is None:
             return self._cam['ExposureTime'].value
         else:
@@ -205,16 +207,16 @@ class CameraInterface:
             self._set_camera_feature('Gain', value)
 
     def width(self, value=None) -> int:
-
         """Set or print width"""
+
         if value is None:
             return self._cam['Width'].value
         else:
             self._set_camera_feature('Width', value)
 
     def width_offset(self, value=None) -> int:
-
         """Set or print width_offset"""
+
         if value is None:
             return self._cam['OffsetX'].value
         else:
@@ -222,6 +224,7 @@ class CameraInterface:
 
     def height(self, value=None) -> int:
         """Set or print height"""
+
         if value is None:
             return self._cam['Height'].value
         else:
@@ -229,6 +232,7 @@ class CameraInterface:
 
     def height_offset(self, value=None) -> int:
         """Set or print height_offset"""
+
         if value is None:
             return self._cam['OffsetY'].value
         else:
@@ -322,14 +326,6 @@ class CameraInterface:
     def _set_camera_feature(self, name, val):
         """Change camera settings.
 
-        Can be called even if LiveFeed is running.
-
-        First, we try to set the given feature without pausing the feed,
-        and pause only if that fails. Possible exceptions are printed to the
-        console.
-
-        TODO Changing of width, height, OffsetX, and OffsetY is not allowed. Use crop() instead.
-
         Note: OutOfRangeException related to features with certain increment
         (e.g. height, width) throws an exception which cannot be handle here.
 
@@ -341,10 +337,6 @@ class CameraInterface:
             Value to be set. Depending on the feature this might
             be int, string, bool etc.
         """
-
-
-        # if name in ["Height", "Width", "OffsetX", "OffsetY"]:
-        #     print("Use method crop() instead.")
 
         if name in self._cam:
             cam_was_acquiring = self._cam.is_acquiring()
