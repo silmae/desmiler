@@ -1,3 +1,13 @@
+"""
+
+This file contains the CubeInspector class for showing scanned spectral cube and
+the smile corrected versions of it.
+
+False color calculations and spectral angle mapping are kept outside of the class
+in case they are to be used with synthetic data at some point.
+
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -8,14 +18,34 @@ from core import properties as P
 from utilities import file_handling as F
 from utilities.numeric import clamp
 
-# General calculations to form false color images, spectral angle maps, etc.
-# --------------------------
 
 def calculate_false_color_images(org, lut, intr, viewable, spectral_blue, spectral_green, spectral_red):
-    """ Calculate false color images for all three cubes.
+    """ Calculate false color images for original and smile corrected (with lookup table or intrepolation) cubes.
 
-    Expects to find color checker blue, green, and red tile from 
-    hard coded areas.
+    Parameters
+    ----------
+        org: xarray Dataset
+            Uncorrected hyperspectral image cube.
+        lut: xarray Dataset
+            Hyperspectral image cube smile corrected with lookup table method.
+        intr: xarray Dataset
+            Hyperspectral image cube smile corrected with interpolation method.
+        viewable : str
+            Viewable data dimension name in the dataset (defined in core.properties.py).
+        spectral_blue : nd.array
+            Indices of blue region in the cube.
+        spectral_green
+            Indices of green region in the cube.
+        spectral_red
+            Indices of red region in the cube.
+    Returns
+    -------
+        org_false: xarray Dataset
+            False color image of the uncorrected cube.
+        lut_false: xarray Dataset
+            False color image of the LUT corrected cube.
+        intr_false: xarray Dataset
+            False color image of the interpolation corrected cube.
     """
 
     rgb = np.array([spectral_red, spectral_green, spectral_blue])
@@ -28,13 +58,13 @@ def calculate_false_color_images(org, lut, intr, viewable, spectral_blue, spectr
     intr_false = (intr_mean / np.max(intr_mean, axis=(0,1))).clip(min=0.0)
     return org_false, lut_false, intr_false
 
-def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x, viewable,
-                use_radians=False, spectral_filter=None, use_scm=False):
+def calculate_sam(source_cube, sam_window_start, sam_window_end, sam_ref_x, viewable,
+                  use_radians=False, spectral_filter=None, use_scm=False):
     """Calculates spectral angle map of a single cube.
     
     Parameters
     ----------
-        sourceCube : DataSet
+        source_cube : xarray Dataset
             Spectral cube from which to calculate the cosine angle.
         sam_window_start : list of ints of lengts 2 (x,y)
             Starting coordinate of the window from where the cosine angle is calculated.
@@ -42,10 +72,12 @@ def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x, viewa
             Ending coordinate of the window from where the cosine angle is calculated.
         sam_ref_x : int
             x-coordinate of the reference point inside the window.
+        viewable : str
+            Viewable data dimension name in the dataset (defined in core.properties.py).
         use_radians : bool, optional default=False
             If True, the actual cosine angle is calculated, else only raw dot product 
             is calculated. Raw dot product is numerically more accurate.
-         spectral_filter : slice
+        spectral_filter : slice
             If given, bands from slice.start to slice.stop are used for cosine angle 
             calculations. Otherwise, the whole spectrum is used.
         use_scm : bool, optional default False
@@ -56,7 +88,7 @@ def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x, viewa
             Plottable spectral angle map image of the size of y,index dimensions of the source cube.
             Values outside of given window are filled with ones, if use_radians = True, and 
             zeros otherwise.
-        chunk : DataArray
+        chunk : xarray DataArray
             Calculated cosine angels the size of given sam window. This is a subset of sam.
     """
 
@@ -66,18 +98,18 @@ def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x, viewa
     if spectral_filter is not None:
         sf = spectral_filter
     else:
-        sf = slice(0, sourceCube.reflectance.x.size-1)
+        sf = slice(0, source_cube.reflectance.x.size - 1)
 
     cos_ref = np.clip(sam_ref_x, sam_window_start[0], sam_window_end[0]) 
 
     # Reference spectrum as mean of a vertical line in the box.
 
-    a = sourceCube[viewable].isel({P.dim_y: cos_ref, P.dim_scan: y_slice, P.dim_x:sf}).mean(dim=P.dim_scan).astype(np.float64)
+    a = source_cube[viewable].isel({P.dim_y: cos_ref, P.dim_scan: y_slice, P.dim_x:sf}).mean(dim=P.dim_scan).astype(np.float64)
     # Reference spectrum as a single pixel spectrum
     # a = sourceCube.reflectance.isel(y=cos_ref, index=int((sam_window_end[1]-sam_window_start[1])/2), x=sf)
     # Reference point as a mean over the whole box area
     # a = sourceCube.reflectance.isel(y=x_slice, index=y_slice, x=sf).mean(dim=('y','index'))
-    b = sourceCube[viewable].isel({P.dim_y: x_slice, P.dim_scan: y_slice, P.dim_x:sf}).astype(np.float64)
+    b = source_cube[viewable].isel({P.dim_y: x_slice, P.dim_scan: y_slice, P.dim_x:sf}).astype(np.float64)
 
     if not use_scm:
         ###    SAM    ####
@@ -98,23 +130,25 @@ def calculate_sam(sourceCube, sam_window_start, sam_window_end, sam_ref_x, viewa
         chunk = np.arccos(chunk)
         chunk = chunk.rename('cosine angle')
         # Initialize cosmap image with zeros
-        sam = np.zeros_like(sourceCube[viewable].isel({P.dim_x:0}).values).astype(np.float64)
+        sam = np.zeros_like(source_cube[viewable].isel({P.dim_x:0}).values).astype(np.float64)
     else:
         chunk = chunk.rename('dot product')
         # Initialize cosmap image with ones
-        sam = np.ones_like(sourceCube[viewable].isel({P.dim_x:0}).values).astype(np.float64)
+        sam = np.ones_like(source_cube[viewable].isel({P.dim_x:0}).values).astype(np.float64)
 
     sam[y_slice, x_slice] = chunk
 
     return sam, chunk
 
+
 class CubeInspector:
-    """CubeInspector is an interactive matplotlib-based inspector program with simple key and mouse commands.
-    
+    """
+    CubeInspector class for showing scanned spectral cube and the smile corrected versions of it.
+
+    CubeInspector is an interactive matplotlib-based inspector program with simple key and mouse commands.
     """
 
     def __init__(self, org, lut, intr, viewable, session_name=None):
-        super().__init__()
         self.org = org
         self.lut = lut
         self.intr = intr
@@ -184,6 +218,7 @@ class CubeInspector:
         # Filter out noisy ends of the spectrum in cosine maps.
         self.spectral_filter_max = self.org[self.viewable][P.dim_x].size
         self.reinit_spectral_filter()
+        # Step size to use when user moves the spectral filter.
         self.spectral_filter_step = 100
 
         # Cosine boxes
@@ -198,7 +233,22 @@ class CubeInspector:
         self.decorations_selection = []
         self.decorations_box = []
 
+        # Set these later
+        self.spectral_filter = None
+        self.spectral_blue = None
+        self.spectral_green = None
+        self.spectral_red = None
+
+        self.connection_mouse  = None
+        self.connection_button = None
+
     def reinit_false_color_spectra(self):
+        """Call after reloading the control file.
+
+        Uses some default values if session control is not used. Just not to crash, but
+        this option should not be used really.
+        """
+
         if self.use_session_control:
             self.spectral_blue = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_blue]
             self.spectral_green = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_green]
@@ -209,10 +259,20 @@ class CubeInspector:
             self.spectral_red = np.arange(1300, 1500)
 
     def reload_control(self):
+        """Reload control file.
+
+        Remember to call update functions for values this affects or the
+        effect won't take place.
+        """
+
         self.control = F.load_control_file(self.path_control)
 
     def reinit_spectral_filter(self):
-        # Filter one third from the middle of the spectrum by default.
+        """Resets the spectral filter. Cal after reloading the control file.
+
+        The default filter filters one third from the middle of the spectrum if session control is not used.
+        """
+
         lin_spectr = np.linspace(0, self.spectral_filter_max, 4, dtype=np.int)
         if self.use_session_control:
             fil = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_filter]
@@ -223,23 +283,24 @@ class CubeInspector:
                                         clamp(lin_spectr[1], 0, self.spectral_filter_max))
 
     def init_plot(self):
+        """Initialize the plots and connect mouse and keyboard."""
+
         self.fig, self.ax = plt.subplots(nrows=2, ncols=2, num='Cube', figsize=(16,12))
         self.connect_ui()
-        self.init_images()
-        self.plot_inited = True
-    
-    def init_images(self):
-        print("Initializing images...", end=' ', flush=True)
         self.images.append(self.org[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[0,1]))
         self.images.append(self.lut[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[1,1]))
         self.images.append(self.intr[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[1,0]))
-        print("done")
+        self.plot_inited = True
 
     def connect_ui(self):
+        """Connect mouse and keyboard."""
+
         self.connection_mouse = self.fig.canvas.mpl_connect('button_press_event', self.onclick)
         self.connection_button = self.fig.canvas.mpl_connect('key_press_event', self.keypress)
 
     def disconnect_ui(self):
+        """Disconnect mouse and keyboard."""
+
         self.fig.canvas.mpl_disconnect(self.connection_mouse)
         self.fig.canvas.mpl_disconnect(self.connection_button)
 
@@ -356,13 +417,12 @@ class CubeInspector:
                 self.reinit_false_color_spectra()
                 self.show(force_update=True)
     
-    def show(self, x=None, y=None, band=None, mode=None, force_update=False, sam_ref_x=None, spectral_filter=None):
+    def show(self, x=None, y=None, band=None, mode=None, force_update=False, sam_ref_x=None):
         """Update images, spectrograms, and overlays as needed."""
 
         band_changed = False
         mode_changed = False
         cos_ref_x_changed = False
-        spectral_filter_changed = False
 
         if x is not None:
             self.y = x
@@ -408,8 +468,6 @@ class CubeInspector:
         May call expensive calculations, so call only when needed.
         """
 
-        # print(f"Updating images (mode {self.mode})...", end=' ', flush=True)
-
         if self.mode == 1:
             source = self.org[self.viewable].isel({P.dim_x:self.x})
             self.images[0].set_data(source)
@@ -447,12 +505,8 @@ class CubeInspector:
             self.ax[1,1].set_title(f'LUT {cosType}', color=self.colors_org_lut_intr[1])
             self.ax[1,0].set_title(f'INTR {cosType}', color=self.colors_org_lut_intr[2])
 
-        # print("done")
-
     def update_spectrograms(self):
         """Update spectrogram view (top left) and its overlays."""
-
-        # print(f"Updating spectrograms...", end=' ', flush=True)
         
         self.ax[0,0].clear()
         if self.mode == 1 or self.mode == 2:
@@ -479,7 +533,6 @@ class CubeInspector:
         if self.mode == 1:
             #Redraw band selection indicator
             _,ylim = self.ax[0,0].get_ylim()
-            ylim = int(ylim)
             xd = np.ones(2)*self.x
             yd = np.array([0, np.max(self.org[self.viewable].isel({P.dim_y: self.y, P.dim_scan: self.idx}))])
             self.ax[0,0].plot(xd,yd,color=self.color_pixel_selection)
@@ -489,14 +542,10 @@ class CubeInspector:
                 xx = np.arange(len(chunk.y))
                 yy = np.mean(chunk, axis=0)
                 self.ax[0,0].plot(xx, yy, color=self.colors_org_lut_intr[i])
-        
-        # print("done")
 
     def update_image_overlay(self):
         """Update decorations drawn over the images."""
 
-        # print(f"Updating image overalys...", end=' ', flush=True)
-        
         # Remove decoration boxes from the matplotlib images.
         for i,_ in enumerate(self.decorations_box):
             self.decorations_box[i].remove()
@@ -534,8 +583,6 @@ class CubeInspector:
                     selection = self.ax[i,j].scatter([self.y], [self.idx], color=self.color_pixel_selection)
                     self.decorations_selection.append(selection)
 
-        # print("done")
-
     def calculate_sams(self):
         """Calculates and saves spectral angle maps for all three cubes and sets them to image list."""
 
@@ -559,9 +606,3 @@ class CubeInspector:
         for i,sam in enumerate(sams):
             self.images[i].set_data(sam)
             self.images[i].set_norm(cm.colors.Normalize(sam.min(), maxVal))
-
-
-if __name__ == '__main__':
-    
-    ci = CubeInspector(scan_name='test_scan_1')
-    ci.show()
