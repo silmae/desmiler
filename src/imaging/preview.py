@@ -1,3 +1,9 @@
+"""
+
+This file contains the Preview class that provides live feed from the connected video camera.
+
+"""
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -17,27 +23,31 @@ class Preview:
     some high-contrast target like a black-white checker illuminated
     with white light, such as sun or a halogen spot. The
     focus is best when the variance is as high as possible.
+
+    The scale of the plots is horrible when drastic changes in illumination
+    happen. Restarting the preview helps.
+
     """
+
+    # The camera interface used for grabbing a frame
+    _cami = None
 
     # Positions of horizontal lines in pixels along y-axis 
     _horizontal_line_positions = None
     # Positions of vertical lines in pixels along x-axis 
     _vertical_line_positions = None
-    # Contains all drawable thingys. Even those that are not 
-    # updated by snap()
+    # Contains all drawable thingys. Even those that are not updated by snap()
     _plots = []
-    # Subplots
+    # The four subplots of the preview
     _subplot_cam = None
     _subplot_row_values = None
     _subplot_column_values = None
     _subplot_variance = None
 
-    # How many frames worth of variances are shown.
+    # How many frames worth of variances are shown in history plot.
     _var_frame_count = 1000
     # List of maximum variance history values.
     _mvh_list = None
-    # X position of maximum variance in pixels.
-    _var_max_pos = 0
 
     # Animation handle for pyplot function animation. 
     # Used for pausing and unpausing the animation.
@@ -51,30 +61,32 @@ class Preview:
     _plots_initialized = False
     # Is live feed (pyplot function animation) running
     _animation_is_running = False
-
-    _cami = None
-
+    # Is the preview object running
     is_running = False
 
     def __init__(self):
-        """Initialize the LiveFeed object with given camera and dark frame.
-
-        """
+        """Initialize the Preview object."""
 
         print(f"Initializing Preview object.")
 
         self._window_name = 'Preview'
-
         self._cami = CameraInterface()
         self._vertical_line_positions = self._make_line_positions('vertical')
         self._horizontal_line_positions = self._make_line_positions('horizontal')
 
     def handle_close(self, evt):
+        """Matplotlib event handler for window closed by the user."""
+
         print('Preview closed by the user.')
         self.is_running = False
         self._animation_is_running = False
 
     def reset(self):
+        """Tries to reset the Preview.
+
+        Not sure if this is working or even useful.
+        """
+
         self.stop()
         try:
             plt.close(self._window_name)
@@ -85,6 +97,8 @@ class Preview:
         self._horizontal_line_positions = self._make_line_positions('horizontal')
                     
     def close(self):
+        """Close the preview and delete the CameraInterface object."""
+
         if self._cami is not None:
             del self._cami
         plt.close(self._window_name)
@@ -188,14 +202,15 @@ class Preview:
         """Start live feed from the camera. 
 
         Creates the animation handle.
-        Initializes the pots if they are not initialized already.
+        Initializes the plots if they are not initialized already.
         """
 
         if not self._plots_initialized:
             self._initPlots()
 
         if self._animation is None:
-            # blit off so that autoscale can work
+            # Blit off so that autoscale can work. As the autoscale does not work too well, blitting could be
+            # on and rendering a bit faster.
             self._animation = animation.FuncAnimation(self._fig, self._snap, interval=10, blit=False)
         else:
             if self._animation.event_source:
@@ -213,8 +228,7 @@ class Preview:
     def stop(self):
         """Stops the live feed from the camera. 
 
-        Stops the animation if it was running and stops camera 
-        aquisition.
+        Stops the animation if it was running and stops camera acquisition.
         """
 
         if self._animation is not None and self._animation.event_source is not None:
@@ -228,7 +242,6 @@ class Preview:
         """Update function for the animation."""
 
         frame = self._cami.get_frame()
-        # max_inte = frame.max().item()
 
         self._plots[0].set_data(frame.values)
 
@@ -240,11 +253,6 @@ class Preview:
             self._mvh_list[i][len(self._mvh_list[0]) - 1] = frame_var[self._vertical_line_positions[i]]
             self._plots[1 + i].set_data(np.arange(0, len(self._mvh_list[0])), self._mvh_list[i])
 
-        # self._var_max_pos = frame_var.argmax(dim='x').item()
-        # frame_max_var = frame_var[self._var_max_pos].item()
-        # frame_max_px = frame.max().item()
-
-        # self._rescale_plots(frame_max_var, frame_max_px)
         self._subplot_variance.relim()
         self._subplot_column_values.relim()
         self._subplot_row_values.relim()
@@ -261,61 +269,11 @@ class Preview:
         
         return self._plots
 
-    def _rescale_plots(self, frame_max_var, frame_max_px):
-        """Rescale plots to fit the data. 
-
-        If new maximum exceeds the old ylim for any plot, new ylim is set with some extra 
-        space to avoid scaling too often. If new maximum is significanly smaller 
-        than the old ylim, new ylim is set to maximum plus some extra space.
-
-        Parameters
-        ----------
-
-        frame_max_var:
-            is the maximum column-wise variance in current frame
-        frame_max_px:
-            is the maximum pixel value in current frame. If dark frame 
-            is not shot, scaling might not work as expected due to dead pixels in 
-            the sensor. 
-
-        """
-
-        extra_space = 1.1
-        low_limit = 0.7
-        var_ylim = self._subplot_variance.get_ylim()[1]
-        var_next = extra_space * frame_max_var
-        if frame_max_var > var_ylim or frame_max_var < low_limit * var_ylim:  # or \
-            self._subplot_variance.relim()
-            # self._subplot_variance.set_ylim(0, var_next)
-
-            # print(1, "  max: ", frameMaxVar, " new lim: ", self._subPlotVariance.get_ylim()[1])
-        # if :  # or \
-        #     self._subplot_variance.relim()
-        #     self._subplot_variance.set_ylim(0, extra_space * frame_max_var)
-            # print(4, "  max: ", frameMaxVar, " new lim: ", self._subPlotVariance.get_ylim()[1])
-
-        col_ylim = self._subplot_column_values.get_ylim()[1]
-        spect_next = extra_space * frame_max_px
-        if frame_max_px > col_ylim or frame_max_px < low_limit * col_ylim:  # or \
-            self._subplot_column_values.relim()
-            # self._subplot_column_values.set_ylim(0,spect_next)
-            # print(2, "  max: ", frameMaxPx, " new lim: ", self._subPlotColumnValues.get_ylim()[1])
-        # if :  # or \
-        #     self._subplot_column_values.relim()
-        #     self._subplot_column_values.set_ylim(0, extra_space * frame_max_px)
-            # print(5, "  max: ", frameMaxPx, " new lim: ", self._subPlotColumnValues.get_ylim()[1])
-        row_ylim = self._subplot_row_values.get_ylim()[1]
-        if frame_max_px > row_ylim or frame_max_px < low_limit * row_ylim:  # or \
-            self._subplot_row_values.relim()
-            # self._subplot_row_values.set_ylim(0, spect_next)
-            # print(3, "  max: ", frameMaxPx, " new lim: ", self._subPlotRowValues.get_ylim()[1])
-        # if :
-        #     self._subplot_row_values.relim()
-        #     self._subplot_row_values.set_ylim(0, extra_space * frame_max_px)
-            # print(6, "  max: ", frameMaxPx, " new lim: ", self._subPlotRowValues.get_ylim()[1])
-
     def _make_line_positions(self, orientation, center=None,  spacing=None):
-        """Centers three lines around a center line."""
+        """Centers three lines around a center line.
+
+        TODO find an emission line and make a tight spread around it
+        """
 
         max_w = self._cami.width()
         max_h = self._cami.height()
