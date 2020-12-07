@@ -1,3 +1,13 @@
+"""
+
+This file contains synthetic data generation and inspection. This is only for examples and experiments
+and does not affect the usage of imaging.
+
+In your IDE, you can set this file to be run (working directory must be set to the same directory
+where this file lives) and run different methods to play around with the example data.
+
+"""
+
 import utilities.file_handling as F
 import core.properties as P
 import os
@@ -14,13 +24,13 @@ from analysis.cube_inspector import CubeInspector
 from core import smile_correction as sc
 from imaging.scanning_session import ScanningSession
 
-# TODO rename to 'example_source' and move to top level dir, so that deleting examples folder does not matter?
+# Define paths used to various source and destination files that are created for examples.
 example_spectrogram_path = os.path.abspath(P.path_example_frames + 'fluorescence_spectrogram.nc')
 undistorted_frame_path = os.path.abspath(P.path_example_frames + 'undistorted_frame.nc')
 dark_frame_path = os.path.abspath(P.path_example_frames + 'dark.nc')
-distotion_smile_path = P.path_example_frames + 'distorted' + '_smile'
-distotion_tilt_path = P.path_example_frames + 'distorted' + '_tilt'
-distotion_smile_tilt_path = P.path_example_frames + 'distorted' + '_smile_tilt'
+distortion_smile_path = P.path_example_frames + 'distorted' + '_smile'
+distortion_tilt_path = P.path_example_frames + 'distorted' + '_tilt'
+distortion_smile_tilt_path = P.path_example_frames + 'distorted' + '_smile_tilt'
 shift_path = P.path_example_frames + 'shift.nc'
 desmile_lut_path = P.path_example_frames + 'desmiled_lut.nc'
 desmile_intr_path = P.path_example_frames + 'desmiled_intr.nc'
@@ -37,37 +47,40 @@ cube_depth = 160
 stripe_width = 40
 
 default_tilt = -1.0
-default_curvature = -30e-6
+default_curvature = -3e-5
 
-# FIXME remove these and use the keys in properties file
+# TODO remove these and use the keys in properties file
 key_curvature_generated = 'generated_curvature'
 key_tilt_generated = 'generated_tilt'
 key_curvature_measured_mean = 'measured_mean_curvature'
 key_tilt_measured_mean = 'measured_mean_tilt'
 
-
-def light_frame_to_spectrogram():
-    """Creates a mean spectrogram from few rows of a frame and saves it.
-
-    Used only for creating 'fluorescence_spectrogram.nc' example spectrogram, which is included
-    in version control. Usage requires recorded real data!
-    """
-
-    source_session = 'light_test'
-    path = '../' + P.path_rel_scan + '/' + source_session + '/' + P.ref_light_name
-    print(f"path: {path}")
-    frame_ds = F.load_frame(path)
-    frame = frame_ds[P.naming_frame_data]
-    height = frame[P.dim_y].size
-    width = frame[P.dim_x].size
-    half_h = int(height / 2)
-    crop_hh = 10
-    frame = frame.isel({P.dim_y: slice(half_h - crop_hh, half_h + crop_hh)})
-    frame = frame.mean(dim=P.dim_y)
-    # plt.plot(frame.data)
-    # plt.show()
-    F.save_frame(frame, example_spectrogram_path)
-
+#
+# This is not to be used unless the data in version control needs to be changed.
+#
+# DO NOT REMOVE THIS METHOD
+#
+# def light_frame_to_spectrogram():
+#     """Creates a mean spectrogram from few rows of a frame and saves it.
+#
+#     Used only for creating 'fluorescence_spectrogram.nc' example spectrogram, which is included
+#     in version control. Usage requires recorded real data!
+#     """
+#
+#     source_session = 'light_test'
+#     path = '../' + P.path_rel_scan + '/' + source_session + '/' + P.ref_light_name
+#     print(f"path: {path}")
+#     frame_ds = F.load_frame(path)
+#     frame = frame_ds[P.naming_frame_data]
+#     height = frame[P.dim_y].size
+#     width = frame[P.dim_x].size
+#     half_h = int(height / 2)
+#     crop_hh = 10
+#     frame = frame.isel({P.dim_y: slice(half_h - crop_hh, half_h + crop_hh)})
+#     frame = frame.mean(dim=P.dim_y)
+#     # plt.plot(frame.data)
+#     # plt.show()
+#     F.save_frame(frame, example_spectrogram_path)
 
 def make_undistorted_and_dark_frame():
     """Creates an example of undistorted frame and dark frame to examples directory.
@@ -132,44 +145,6 @@ def make_undistorted_and_dark_frame():
     F.save_frame(dark_frame, dark_frame_path)
     print("done")
 
-
-# def make_dark_frame():
-#     """Creates an example of dark frame (just noise) to examples directory.
-#
-#     Frame data follows closely to the form that camazing uses in the frames it provides.
-#     Attributes are omitted though.
-#     """
-#
-#
-#     source = F.load_frame(example_spectrogram_path)
-#     width = source[P.naming_frame_data][P.dim_x].size
-#     source_data = source[P.naming_frame_data].data
-#     max_pixel_val = source_data.max()
-#
-#     full_sensor = np.zeros((sensor_height, width))
-#
-#     # Add random noise
-#     rando = np.random.uniform(0, random_noise_fac * max_pixel_val, size=(sensor_height, width))
-#     full_sensor = full_sensor + rando
-#
-#     coords = {
-#         "x": ("x", np.arange(0, source[P.naming_frame_data][P.dim_x].size) + 0.5),
-#         "y": ("y", np.arange(0, sensor_height) + 0.5),
-#         "timestamp": dt.datetime.today().timestamp(),
-#     }
-#     dims = ('y', 'x')
-#     frame = xr.DataArray(
-#         full_sensor,
-#         name="frame",
-#         dims=dims,
-#         coords=coords,
-#     )
-#
-#     # frame_inspector.plot_frame(frame)
-#     F.save_frame(frame, dark_frame_path)
-#     print("done")
-
-
 def generate_distortion_matrix(width, height, amount, method='smile') -> np.ndarray:
     """Generates a distortion matrix.
 
@@ -214,7 +189,6 @@ def generate_distortion_matrix(width, height, amount, method='smile') -> np.ndar
 
     return distortion_matrix
 
-
 def interpolative_distortion(frame, distorition_matrix):
     """ Use interpolation to apply the distortion matrix to undistorted frame.
 
@@ -240,7 +214,6 @@ def interpolative_distortion(frame, distorition_matrix):
 
     return ds[P.naming_frame_data]
 
-
 def distort_row(row):
     """ Row-wise interpolation. """
 
@@ -250,11 +223,11 @@ def distort_row(row):
     row = row.interp({P.dim_x: new_x}, method='linear')
     return row
 
-
 def make_distorted_frame(distortions, amount=None):
     """Creates an example of a frame suffering from spectral smile or tilt or both to examples directory.
 
-    Adds metadata to the frame. Meta contains tilt and curvature of the spectral lines.
+    Adds metadata to the frame, which can be accessed through the dataset ds by 'ds.attributes'.
+    Meta contains tilt and curvature of the spectral lines.
     """
 
     print("Generating distorted frame")
@@ -309,7 +282,6 @@ def make_distorted_frame(distortions, amount=None):
     meta[P.meta_key_tilt] = [sl.tilt for sl in sl_list]
     meta[P.meta_key_curvature] = [sl.curvature for sl in sl_list]
 
-    # TODO the mean curvature is not very good estimator as shallow curves may be in both directions
     meta[key_curvature_measured_mean] = np.mean(np.array([sl.curvature for sl in sl_list]))
     meta[key_tilt_measured_mean] = np.mean(np.array([sl.tilt_angle_degree_abs for sl in sl_list]))
 
@@ -322,9 +294,9 @@ def make_distorted_frame(distortions, amount=None):
 
     F.save_frame(u_frame, save_path, meta)
     print(f"Generated distorted frame to '{save_path}'")
+    # Uncomment for debugging
     # plt.imshow(u_frame)
     # plt.show()
-
 
 def make_stripe_cube():
     """Generates a raw cube.
@@ -344,10 +316,10 @@ def make_stripe_cube():
     height = control[P.ctrl_scan_settings][P.ctrl_height]
     height_offset = control[P.ctrl_scan_settings][P.ctrl_height_offset]
 
-    if not os.path.exists(distotion_smile_tilt_path + '.nc'):
+    if not os.path.exists(distortion_smile_tilt_path + '.nc'):
         make_distorted_frame(['smile', 'tilt'])
 
-    white_area = F.load_frame(distotion_smile_tilt_path)
+    white_area = F.load_frame(distortion_smile_tilt_path)
     dark_area = white_area.copy(deep=True)
 
     F.save_frame(white_area[P.naming_frame_data], P.path_rel_scan + P.example_scan_name + '/' + P.ref_white_name)
@@ -396,12 +368,8 @@ def make_stripe_cube():
     F.save_cube(cube, P.path_rel_scan + '/' + P.example_scan_name + '/' + P.cube_raw_name)
     print(f"Generated stripe example raw cube.")
 
-
 def make_shift_matrix():
-    """Make shift matrix and save it to disk.
-
-    TODO move elsewhere
-    """
+    """Make shift matrix and save it to disk."""
 
     control = toml.loads(P.example_scan_control_content)
     width = control[P.ctrl_scan_settings][P.ctrl_width]
@@ -410,10 +378,9 @@ def make_shift_matrix():
     height_offset = control[P.ctrl_scan_settings][P.ctrl_height_offset]
 
     positions = np.array(control[P.ctrl_spectral_lines][P.ctrl_positions]) - width_offset
-    peak_width = control[P.ctrl_spectral_lines][P.ctrl_peak_width]
     bandpass_width = control[P.ctrl_spectral_lines][P.ctrl_window_width]
 
-    light_ds = F.load_frame(distotion_smile_tilt_path)
+    light_ds = F.load_frame(distortion_smile_tilt_path)
 
     light_ds = light_ds.isel({P.dim_x: slice(width_offset, width_offset + width),
                               P.dim_y: slice(height_offset, height_offset + height)})
@@ -432,66 +399,80 @@ def make_shift_matrix():
     # plt.show()
     return shift_matrix, sl_list
 
-
 def apply_frame_correction(method):
+    """Do a smile correction for a single frame and return the result.
+
+    Parameters
+    ----------
+        method: int
+            Either 0 for lookup table method or 1 for row interpolation method.
+    """
     control = toml.loads(P.example_scan_control_content)
     width = control[P.ctrl_scan_settings][P.ctrl_width]
     width_offset = control[P.ctrl_scan_settings][P.ctrl_width_offset]
     height = control[P.ctrl_scan_settings][P.ctrl_height]
     height_offset = control[P.ctrl_scan_settings][P.ctrl_height_offset]
 
-    positions = np.array(control[P.ctrl_spectral_lines][P.ctrl_positions]) - width_offset
-    peak_width = control[P.ctrl_spectral_lines][P.ctrl_peak_width]
-    bandpass_width = control[P.ctrl_spectral_lines][P.ctrl_window_width]
-
-    light_ds = F.load_frame(distotion_smile_tilt_path)
+    light_ds = F.load_frame(distortion_smile_tilt_path)
     light_ds = light_ds.isel({P.dim_x: slice(width_offset, width_offset + width),
                               P.dim_y: slice(height_offset, height_offset + height)})
     sm, sl = make_shift_matrix()
 
     # Uncomment for debugging
-    frame_inspector.plot_frame(light_ds, sl, True, True)
-    sm.plot()
-    plt.show()
+    # frame_inspector.plot_frame(light_ds, sl, True, True)
+    # sm.plot()
+    # plt.show()
 
     light_frame = light_ds[P.naming_frame_data]
     corrected = sc.apply_shift_matrix(light_frame, shift_matrix=sm, method=method, target_is_cube=False)
     return corrected
 
-
 def show_source_spectrogram():
-    show_me(example_spectrogram_path)
+    """Show the spectrogram used to generate all the examples. """
 
+    _show_a_frame(example_spectrogram_path)
 
 def show_undistorted_frame():
-    show_me(undistorted_frame_path, window_name='Undistorted')
+    """Show generated ideal frame free of distortions."""
 
+    _show_a_frame(undistorted_frame_path, window_name='Undistorted')
 
 def show_dark_frame():
-    show_me(dark_frame_path, window_name='Dark current')
+    """Show generated dark frame."""
 
+    _show_a_frame(dark_frame_path, window_name='Dark current')
 
 def show_smiled_frame():
-    show_me(distotion_smile_path, window_name='Distortions: smile')
+    """Show generated frame with just smile distortion."""
 
+    _show_a_frame(distortion_smile_path, window_name='Distortions: smile')
 
 def show_tilted_frame():
-    show_me(distotion_tilt_path, window_name='Distortions: tilt')
+    """Show generated frame with just tilt distortion."""
 
+    _show_a_frame(distortion_tilt_path, window_name='Distortions: tilt')
 
 def show_smiled_tilted_frame():
-    show_me(distotion_smile_tilt_path, window_name='Distortions: smile + tilt')
+    """Show generated frame with smile and tilt distortion.
 
+    This resembles most closely the real frames acquired from the imager.
+    """
+
+    _show_a_frame(distortion_smile_tilt_path, window_name='Distortions: smile + tilt')
 
 def show_desmiled_lut():
-    show_me(desmile_lut_path, window_name='Desmiled with LUT')
+    """Show the smile and tilt distorted frame after running smile correction with lookup table shifts."""
 
+    _show_a_frame(desmile_lut_path, window_name='Desmiled with LUT')
 
 def show_desmiled_intr():
-    show_me(desmile_intr_path, window_name='Desmiled with INTR')
+    """Show the smile and tilt distorted frame after running smile correction with interpolated shifts."""
 
+    _show_a_frame(desmile_intr_path, window_name='Desmiled with INTR')
 
-def show_me(path, window_name=None):
+def _show_a_frame(path, window_name=None):
+    """General method to show various stuff. """
+
     source = F.load_frame(path)
     frame = source[P.naming_frame_data]
     dim_count = len(frame.dims)
@@ -502,8 +483,9 @@ def show_me(path, window_name=None):
 
     plt.show()
 
-
 def generate_cube_examples():
+    """Generate cube examples. This takes some time and RAM."""
+
     check_dirs()
     make_stripe_cube()
     session = ScanningSession(P.example_scan_name)
@@ -511,11 +493,11 @@ def generate_cube_examples():
     session.desmile_cube(shift_method=0)
     session.desmile_cube(shift_method=1)
 
-
 def generate_frame_examples():
+    """Generate all of the frame examples. Fairly fast operation."""
+
     check_dirs()
     make_undistorted_and_dark_frame()
-    # make_dark_frame()
     make_distorted_frame(['smile'])
     make_distorted_frame(['tilt'])
     make_distorted_frame(['smile', 'tilt'])
@@ -525,22 +507,25 @@ def generate_frame_examples():
     intr_frame = apply_frame_correction(1)
     F.save_frame(intr_frame, desmile_intr_path)
 
-
 def generate_all_examples():
+    """Generates all the cube and frame examples. Takes a lot of time and memory."""
+
     check_dirs()
     generate_frame_examples()
     generate_cube_examples()
 
-
 def check_dirs():
+    """Check that necessary directories exist."""
+
     F.create_default_directories()
     if not os.path.exists(P.path_rel_scan + P.example_scan_name):
         F.create_directory(P.path_rel_scan + P.example_scan_name)
     if not os.path.exists(P.path_example_frames):
         F.create_directory(P.path_example_frames)
 
-
 def show_frame_examples():
+    """Shows all frame examples one by one. """
+
     show_source_spectrogram()
     show_dark_frame()
     show_undistorted_frame()
@@ -548,14 +533,16 @@ def show_frame_examples():
     show_tilted_frame()
     show_smiled_tilted_frame()
 
-
 def show_shift_matrix():
+    """Show the example shift matrix."""
+
     sm = F.load_shit_matrix(shift_path)
     sm.plot.imshow()
     plt.show()
 
-
 def show_cube_examples():
+    """Show cube examples using CubeInspector. """
+
     try:
         rfl = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_reflectance_name)
         desmiled_lut = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_desmiled_lut)
@@ -569,8 +556,11 @@ def show_cube_examples():
         logging.error(r)
         print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
 
-
 def show_raw_cube():
+    """Show only the raw cube with the CubeInspector.
+
+    This is mainly for debugging convenience so that the desmiling does not have to be run to test the CubeInspector.
+    """
     try:
         raw = F.load_cube(P.path_rel_scan + P.example_scan_name + '/' + P.cube_raw_name)
         ci = CubeInspector(raw, raw, raw, P.naming_cube_data)
@@ -581,7 +571,6 @@ def show_raw_cube():
     except RuntimeError as r:
         logging.error(r)
         print(f"Could not load one of the cubes. Run synthetic_data.generate_cube_examples() and try again.")
-
 
 if __name__ == '__main__':
     # light_frame_to_spectrogram()
