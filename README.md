@@ -11,26 +11,57 @@ A cube is hyperspectral data cube consisting of consecutive frames along a scan.
 Frames and cubes are expected to be in netcdf format for saving and loading. 
 We use xarray Dataset and DataArray to store and manipulate the data.
 
-Be prepared to fix bugs if your data is in different form than ours. 
-Especially the dimension names of the xarray Datasets are mostly hard-coded. 
-We use ('index', 'y', 'x') order where 'index' is the direction of the scan, 
-'y' is dimension perpendicular to scan direction,  and 'x' is the spectral dimension. 
-Many operations use underlaying numpy arrays, so different order will most probably 
-break things.
+## Imaging
 
-## Outline
+1. Light reference (for aberration correction)
+	* point imager towards fluorescence tube
+	* call `ui.shoot_light()`
+2. White reference
+	* point imager towards white reference using selected scanning platform
+	* call `ui.shoot_white()`
+3. Dark reference
+	* put the lens cap on
+	* call `ui.shoot_dark()`
+	* remove the lens cap
+4. Set scanning parameters
+	* point imager towards white reference target using selected scanning platform
+	* call `ui.start_preview()` 
+	* take note of the illuminated sensor area and write proper cropping to the control file
+	* one can also adjust the focus of the imager at this stage
+	* adjust exposure time as needed by calling `ui.exposure(<value>)`
+	* set scanning speed and length to the control file (using arbitrary units, 
+			e.g., mm/s and mm, respectively) 	
+5. Run a scan
+	* run scan by calling `ui.run_scan()`. One can set 
+		`is_mock_scan = 1` in control file to just print the scanning parameters 
+	* take note of the actual scanning time, which is printed to the console and 
+		may differ from what was desired 
+		if the imager cannot provide frames fast enough with selected exposure time
+6. Inspect cube
+	* call `ui.show_cube()` to start the CubeInspector. It will load the raw 
+		cube if no reflectance cubes are found from the file system. 
+	* adjust parameters and redo the scan if needed by repeating steps 4, 5, and 6
+7. Set correction parameters
+	* call `ui.show_light()`, which will show the light reference shot earlier. 
+		Ignore badly fitted arcs for now.
+	* select some well-separated emission lines and write their x-coordinates 
+		to the control file
+	* call `ui.show_light()` again. Fitted arcs should now lie along 
+		the actual emission lines. If this is not the case, try adjusting the emission 
+		line estimates or select more prominent lines. Bad fits are usually grossly out 
+		of place, so they are easy to spot.
+8. Make reflectance cube
+	* call `ui.make_reflectance_cube()`, which will use the dark and white 
+		references shot earlier
+9. Run aberration correction
+	* call `ui.make_desmiled_cube()`, which will show a visual representation 
+		of the shift matrix used for the correction before starting. The shift matrix should 
+		be relatively smooth and values should be relatively small (our values were approx. 
+		0.1 % of the sensor's width). 
+10. Check the results
+	* call `ui.show_cube()`, which will now load the corrected reflectance cubes 
+		alongside the uncorrected one
 
-* smile_cerrection.py: Does all heavy lifting for desmiling.
-* scan.py: For desmiling the result of a single scanning session. 
-	See the file documentation for details.
-* frame_inspector.py: Inspect frames visually with matplotlib plots. 
-	Inspected frame can be overlaid with circle fit and line fit data. 
-	Band pass can also be plotted.
-* cube_inspector.py: Interactive cube inspection tool. See more below.
-* test_main.py: Usage examples.
-* spectral_line.py: SpectralLine objects represent a single spectral line 
-	of a frame.
-* curve_fit.py: Optimization for circle and line fits used by SpectralLine.
 
 ## CubeInspector class
 
