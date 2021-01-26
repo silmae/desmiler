@@ -212,13 +212,13 @@ class ScanningSession:
         self.reload_settings()
         if ref_type in (P.ref_dark_name, P.ref_white_name, P.ref_light_name):
             logging.debug(f"Crop before starting to shoot {ref_type}:\n {self._cami.get_crop_meta_dict()}")
-            old, _ = self._cami._crop(full=True)
+            old, _ = self._cami.crop(full=True)
             logging.debug(f"New crop:\n {self._cami.get_crop_meta_dict()}")
             print(f"Shooting frame (avg of {P.dwl_default_count} with {self._cami.exposure():.1f} micro seconds.)")
             ref_frame = self._cami.get_frame_opt(count=P.dwl_default_count, method=P.dwl_default_method)
             meta_dict = self._cami.get_crop_meta_dict()
             ref_frame = F.save_frame(ref_frame, self.session_root + '/' + ref_type, meta_dict=meta_dict)
-            self._cami._crop(*old)
+            self._cami.crop(*old)
             logging.debug(f"Reverted back to crop:\n {self._cami.get_crop_meta_dict()}")
             if ref_type == P.ref_dark_name:
                 self.dark = ref_frame
