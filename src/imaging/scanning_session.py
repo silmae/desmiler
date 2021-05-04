@@ -129,8 +129,7 @@ class ScanningSession:
         """Initialize CameraInterface if not initialized yet."""
 
         if self._cami is None:
-            self._cami = CameraInterface()
-            self._cami.save_camera_settings(self.camera_setting_path)
+            self._cami = CameraInterface(self.camera_setting_path)
 
     def reload_settings(self):
         """Reload all settings.

@@ -49,7 +49,7 @@ class CameraInterface:
     # Should not be used directly unless it can't be avoided.
     _cam = None
 
-    def __init__(self):
+    def __init__(self, settings_path=None):
         """Initializes the camera.
 
         Assumes only one camera is connected to the machine so the first one
@@ -97,11 +97,21 @@ class CameraInterface:
             raise
 
         # Read camera settings from a file.
-        abs_path = P.path_rel_default_cam_settings
-        _, errors = self._cam.load_config_from_file(abs_path)
+        default_path = os.path.abspath(P.path_rel_default_cam_settings)
+
+        if settings_path is None:
+            use_path = default_path
+        elif settings_path is not None and not os.path.exists(os.path.abspath(settings_path)):
+            logging.warning(f"Given camera settings path '{os.path.abspath(settings_path)}' not found.")
+            use_path = default_path
+        else:
+            use_path = os.path.normpath(settings_path)
+
+        logging.info(f"Loading default settings from {use_path}.")
+        _, errors = self._cam.load_config_from_file(os.path.abspath(P.path_rel_default_cam_settings))
 
         if len(errors) != 0:
-            logging.warning(f"Errors provided by camazing when loading settings from path {abs_path}:")
+            logging.warning(f"Errors provided by camazing when loading settings from path {use_path}:")
             for e in enumerate(errors):
                 logging.warning(f"\t{e}")
 
