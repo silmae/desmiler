@@ -176,7 +176,7 @@ class CubeInspector:
         self.sam_ref_x = self.y
 
         # Modes: 1 for reflectance image, 2 for false color image, 3 for spectral angle
-        self.mode = 1
+        self.mode = 2
 
         # Containers for false color images
         self.org_false = None
@@ -187,6 +187,11 @@ class CubeInspector:
         # Toggle mode 3 between radians and dot product.
         self.toggle_radians = False
 
+        # Set these later
+        self.spectral_filter = None
+        self.spectral_blue = None
+        self.spectral_green = None
+        self.spectral_red = None
         # Define spectral are to use in false color construction
         self.reinit_false_color_spectra()
 
@@ -233,12 +238,6 @@ class CubeInspector:
         self.decorations_selection = []
         self.decorations_box = []
 
-        # Set these later
-        self.spectral_filter = None
-        self.spectral_blue = None
-        self.spectral_green = None
-        self.spectral_red = None
-
         self.connection_mouse  = None
         self.connection_button = None
 
@@ -250,9 +249,17 @@ class CubeInspector:
         """
 
         if self.use_session_control:
-            self.spectral_blue = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_blue]
-            self.spectral_green = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_green]
-            self.spectral_red = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_red]
+            b = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_blue]
+            g = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_green]
+            r = self.control[P.ctrl_cube_inspector][P.ctrl_spectral_red]
+            self.spectral_blue = np.arange(b[0], b[1], dtype=np.int)
+            self.spectral_green = np.arange(g[0], g[1], dtype=np.int)
+            self.spectral_red = np.arange(r[0], r[1], dtype=np.int)
+            # FIXME fix this shit
+            w = 200
+            self.spectral_blue = np.arange(b[0], b[0]+w)
+            self.spectral_green = np.arange(g[0], g[0]+w)
+            self.spectral_red = np.arange(r[0], r[0]+w)
         else:
             self.spectral_blue = np.arange(300, 500)
             self.spectral_green = np.arange(660, 860)

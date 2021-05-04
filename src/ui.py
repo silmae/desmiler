@@ -227,3 +227,8 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     # create an UI object to be used from the ipython console
     ui = UI()
+    ui.start_session('leevi1')
+    # ui.run_scan()
+    # ui.start_preview()
+    # ui.make_desmiled_cube()
+    # ui.show_cube()
