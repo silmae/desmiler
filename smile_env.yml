@@ -5,10 +5,10 @@ name: smile
 channels:
   - defaults
 dependencies:
-  - python==3.7
+  - python==3.7.0 # try also 3.7.9 if not working
   - numpy
   - pandas
-  - xarray
+  - xarray==0.16.1
   - scipy
   - netcdf4
   - matplotlib
@@ -19,6 +19,6 @@ dependencies:
   - ipython
   - pip
   - pip:
-      - netcdf4
+      - netcdf4==1.5.4
       # Expect camazing to be one level higher
       - -e ../camazing
