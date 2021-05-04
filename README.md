@@ -1,7 +1,26 @@
 # desmiler
 
-For detecting and correcting smile aberration of a push-broom hyperspectral imager. 
-Contains various inspection tools to visualize the result of desmiling. 
+This software is related to scientific paper "A Do-It-Yourself Hyperspectral 
+Imager Brought to Practice with Open-Source Python" available at 
+https://www.mdpi.com/1424-8220/21/4/1072, DOI https://doi.org/10.3390/s21041072. 
+
+## Paper abstract
+
+Commercial hyperspectral imagers (HSIs) are expensive and thus unobtainable for large 
+audiences or research groups with low funding. In this study, we used an existing 
+do-it-yourself push-broom HSI design for which we provide software to correct for spectral 
+mile aberration without using an optical laboratory. The software also corrects an 
+aberration which we call tilt. The tilt is specific for the particular imager design 
+used, but correcting it may be beneficial for other similar devices. The tilt and 
+spectral smile were reduced to zero in terms of used metrics. The software artifact is 
+available as an open-source Github repository. We also present improved casing for the 
+imager design, and, for those readers interested in building their own HSI, we provide 
+print-ready and modifiable versions of the 3D-models required in manufacturing the imager. 
+To our best knowledge, solving the spectral smile correction problem without an optical 
+laboratory has not been previously reported. This study re-solved the problem with 
+simpler and cheaper tools than those commonly utilized. We hope that this study will 
+promote easier access to hyperspectral imaging for all audiences regardless of their 
+financial status and availability of an optical laboratory. 
 
 ## Notation and data format
 
@@ -148,8 +167,3 @@ Create environment with conda running
 in conda prompt.
 
 Change ```create``` to ```update``` when updating.
-
-## DOI
-
-https://doi.org/10.5281/zenodo.3903218
-
