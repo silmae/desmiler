@@ -155,6 +155,8 @@ class CubeInspector:
         self.viewable = viewable
         self.use_session_control = False
 
+        self.use_color_checker_rgb = False
+
         if session_name is not None:
             self.use_session_control = True
             self.path_control = P.path_rel_scan + session_name + '/' + P.fn_control
@@ -207,11 +209,12 @@ class CubeInspector:
         self.colors_rbg = ['red','green','blue']
         self.colors_org_lut_intr = ['black','lightcoral','purple']
         self.color_pixel_selection = 'violet'
-                
-        # Boundaries of RGB boxes used for false color calculations.
-        lins = np.linspace(0, self.height_image, num=13, dtype=np.int)
-        self.rgb_horizontal_chunk = slice(int(self.width_image/10), self.width_image - int(self.width_image/10))
-        self.rgb_vertical_chunks = [slice(lins[1], lins[3]), slice(lins[5], lins[7]), slice(lins[9], lins[11])]
+
+        if self.use_color_checker_rgb:
+            # Boundaries of RGB boxes used for false color calculations.
+            lins = np.linspace(0, self.height_image, num=13, dtype=np.int)
+            self.rgb_horizontal_chunk = slice(int(self.width_image/10), self.width_image - int(self.width_image/10))
+            self.rgb_vertical_chunks = [slice(lins[1], lins[3]), slice(lins[5], lins[7]), slice(lins[9], lins[11])]
         
         # Images to be plotted on update. Active mode will stuff images in 
         # this list, which are then drawn over the old ones.
@@ -521,10 +524,11 @@ class CubeInspector:
             self.lut[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[1])
             self.intr[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[2])
 
-            # Reference color spectra
-            for i,_ in enumerate(self.rgb_vertical_chunks):
-                rgb_chunk = self.org[self.viewable].isel({P.dim_y:self.rgb_horizontal_chunk, P.dim_scan:self.rgb_vertical_chunks[i]}).mean(dim=(P.dim_scan, P.dim_y))
-                rgb_chunk.plot(ax=self.ax[0,0], color=self.colors_rbg[i])
+            if self.use_color_checker_rgb:
+                # Reference color spectra
+                for i,_ in enumerate(self.rgb_vertical_chunks):
+                    rgb_chunk = self.org[self.viewable].isel({P.dim_y:self.rgb_horizontal_chunk, P.dim_scan:self.rgb_vertical_chunks[i]}).mean(dim=(P.dim_scan, P.dim_y))
+                    rgb_chunk.plot(ax=self.ax[0,0], color=self.colors_rbg[i])
 
             self.ax[0,0].set_title('Spectrograms')
         else:
@@ -560,7 +564,7 @@ class CubeInspector:
         # And clear them from the storage as well.
         self.decorations_box = []
 
-        if self.mode == 1 or self.mode == 2:
+        if (self.mode == 1 or self.mode == 2) and self.use_color_checker_rgb:
             for i,rgbXChunk in enumerate(self.rgb_vertical_chunks):
                 bottomLeftCorner = (self.rgb_horizontal_chunk.start, rgbXChunk.start)
                 w = self.rgb_horizontal_chunk.stop - self.rgb_horizontal_chunk.start
