@@ -64,13 +64,15 @@ class Preview:
     # Is the preview object running
     is_running = False
 
-    def __init__(self):
+    def __init__(self, camera_settings_path=None):
         """Initialize the Preview object."""
 
         print(f"Initializing Preview object.")
 
         self._window_name = 'Preview'
-        self._cami = CameraInterface()
+        self._cami = CameraInterface(camera_settings_path)
+        # self._cami._set_camera_feature('BinningHorizontal', 2)
+        # self._cami._set_camera_feature('BinningVertical', 1)
         self._vertical_line_positions = self._make_line_positions('vertical')
         self._horizontal_line_positions = self._make_line_positions('horizontal')
 

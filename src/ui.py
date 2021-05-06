@@ -83,7 +83,10 @@ class UI:
     def start_preview(self):
         """Starts a new preview for inspecting the camera feed."""
 
-        self.preview = Preview()
+        camera_settings_path = None
+        if self.sc:
+            camera_settings_path = self.sc.camera_setting_path
+        self.preview = Preview(camera_settings_path)
         self.preview.start()
 
     def shoot_dark(self):
@@ -227,10 +230,10 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     # create an UI object to be used from the ipython console
     ui = UI()
-    ui.start_freeform_session()
-    ui.start_preview()
-    # ui.start_session('leevi1')
+    # ui.start_freeform_session()
+    # ui.start_preview()
+    ui.start_session('window1')
     # ui.run_scan()
     # ui.start_preview()
     # ui.make_desmiled_cube()
-    # ui.show_cube()
+    ui.show_cube()

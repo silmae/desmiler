@@ -107,8 +107,8 @@ class CameraInterface:
         else:
             use_path = os.path.normpath(settings_path)
 
-        logging.info(f"Loading default settings from {use_path}.")
-        _, errors = self._cam.load_config_from_file(os.path.abspath(P.path_rel_default_cam_settings))
+        logging.info(f"Loading camera settings from {use_path}.")
+        _, errors = self._cam.load_config_from_file(use_path)
 
         if len(errors) != 0:
             logging.warning(f"Errors provided by camazing when loading settings from path {use_path}:")
