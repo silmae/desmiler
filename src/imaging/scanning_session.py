@@ -515,13 +515,11 @@ class ScanningSession:
             if os.path.exists(self.cube_desmiled_lut_path):
                 target_cube_2 = F.load_cube(self.cube_desmiled_lut_path)
             else:
-                logging.warning(f"LUT desmiled cube does not exist. Using original cube instead.")
-                target_cube_2 = target_cube
+                target_cube_2 = None
             if os.path.exists(self.cube_desmiled_lut_path):
                 target_cube_3 = F.load_cube(self.cube_desmiled_intr_path)
             else:
-                logging.warning(f"INTR desmiled cube does not exist. Using original cube instead.")
-                target_cube_3 = target_cube
+                target_cube_3 = None
 
             ci = CubeInspector(target_cube, target_cube_2, target_cube_3, viewable=viewable, session_name=self.session_name)
             ci.show()
