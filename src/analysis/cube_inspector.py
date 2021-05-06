@@ -54,12 +54,6 @@ def calculate_false_color_images(source_cube_list, viewable, spectral_blue, spec
         mean = np.mean(cube[viewable].values[:,:,rgb], axis=3).astype(np.float32)
         false = (mean / np.max(mean, axis=(0,1))).clip(min=0.0)
         false_list.append(false)
-
-    # Assumes that dimensions are ordered (P.dim_scan, P.dim_y, P.dim_x)
-    # lut_mean = np.mean(lut[viewable].values[:,:,rgb], axis=3).astype(np.float32)
-    # intr_mean = np.mean(intr[viewable].values[:,:,rgb], axis=3).astype(np.float32)
-    # lut_false = (lut_mean / np.max(lut_mean, axis=(0,1))).clip(min=0.0)
-    # intr_false = (intr_mean / np.max(intr_mean, axis=(0,1))).clip(min=0.0)
     return false_list
 
 def calculate_sam(source_cube, sam_window_start, sam_window_end, sam_ref_x, viewable,
@@ -205,9 +199,6 @@ class CubeInspector:
         self.mode = 1
 
         # Containers for false color images
-        # self.org_false = None
-        # self.lut_false = None
-        # self.intr_false = None
         self.false_images = []
         # False color images calculated lazyly only once.
         self.false_color_calculated = False
@@ -517,13 +508,6 @@ class CubeInspector:
                 image_data = cube[self.viewable].isel({P.dim_x: self.x})
                 self.images[i].set_data(image_data)
                 self.images[i].set_norm(cm.colors.Normalize(image_data.min(), image_data.max()))
-
-            # source = self.lut[self.viewable].isel({P.dim_x:self.x})
-            # self.images[1].set_data(source)
-            # self.images[1].set_norm(cm.colors.Normalize(source.min(), source.max()))
-            # source = self.intr[self.viewable].isel({P.dim_x:self.x})
-            # self.images[2].set_data(source)
-            # self.images[2].set_norm(cm.colors.Normalize(source.min(), source.max()))
            
             self.ax[0,1].set_title(f'ORG, band={self.x}', color=self.colors_org_lut_intr[0])
             self.ax[1,1].set_title(f'LUT, band={self.x}', color=self.colors_org_lut_intr[1])
@@ -538,9 +522,7 @@ class CubeInspector:
                 self.false_color_calculated = True
             for i,image in enumerate(self.false_images):
                 self.images[i].set_data(image)
-            # self.images[0].set_data(self.org_false)
-            # self.images[1].set_data(self.lut_false)
-            # self.images[2].set_data(self.intr_false)
+
             self.ax[0,1].set_title(f'ORG false color picture', color=self.colors_org_lut_intr[0])
             self.ax[1,1].set_title(f'LUT false color picture', color=self.colors_org_lut_intr[1])
             self.ax[1,0].set_title(f'INTR false color picture', color=self.colors_org_lut_intr[2])
@@ -561,8 +543,6 @@ class CubeInspector:
         if self.mode == 1 or self.mode == 2:
             for i,cube in enumerate(self.cubes):
                 cube[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[i])
-            # self.lut[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[1])
-            # self.intr[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[2])
 
             if self.use_color_checker_rgb:
                 # Reference color spectra
@@ -644,15 +624,6 @@ class CubeInspector:
                                              self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
             sams.append(sam)
             self.sam_chunks_list.append(cosMapChunk)
-
-        # sam, cosMapChunk = calculate_sam(self.lut, self.sam_window_start, self.sam_window_end,
-        #                                  self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
-        # sams.append(sam)
-        # self.sam_chunks_list.append(cosMapChunk)
-        # sam, cosMapChunk = calculate_sam(self.intr, self.sam_window_start, self.sam_window_end,
-        #                                  self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
-        # sams.append(sam)
-        # self.sam_chunks_list.append(cosMapChunk)
 
         maxVal = np.max(np.array(list(np.max(chunk) for chunk in self.sam_chunks_list)))
 
