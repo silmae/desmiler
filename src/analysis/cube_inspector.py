@@ -324,7 +324,8 @@ class CubeInspector:
         self.connect_ui()
         for i,cube in enumerate(self.cubes):
             n,m = self.nth_image_as_index(i+1)
-            self.images.append(cube[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[n,m]))
+            ax_image = self.ax[n,m].imshow(cube[self.viewable].isel({P.dim_x:self.x}))
+            self.images.append(ax_image)
         self.plot_inited = True
 
     def connect_ui(self):
