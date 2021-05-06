@@ -19,7 +19,7 @@ from utilities import file_handling as F
 from utilities.numeric import clamp
 
 
-def calculate_false_color_images(org, lut, intr, viewable, spectral_blue, spectral_green, spectral_red):
+def calculate_false_color_images(source_cube_list, viewable, spectral_blue, spectral_green, spectral_red):
     """ Calculate false color images for original and smile corrected (with lookup table or intrepolation) cubes.
 
     Parameters
@@ -49,14 +49,18 @@ def calculate_false_color_images(org, lut, intr, viewable, spectral_blue, spectr
     """
 
     rgb = np.array([spectral_red, spectral_green, spectral_blue])
+    false_list = []
+    for i,cube in enumerate(source_cube_list):
+        mean = np.mean(cube[viewable].values[:,:,rgb], axis=3).astype(np.float32)
+        false = (mean / np.max(mean, axis=(0,1))).clip(min=0.0)
+        false_list.append(false)
+
     # Assumes that dimensions are ordered (P.dim_scan, P.dim_y, P.dim_x)
-    org_mean = np.mean(org[viewable].values[:,:,rgb], axis=3).astype(np.float32)
-    lut_mean = np.mean(lut[viewable].values[:,:,rgb], axis=3).astype(np.float32)
-    intr_mean = np.mean(intr[viewable].values[:,:,rgb], axis=3).astype(np.float32)
-    org_false = (org_mean / np.max(org_mean, axis=(0,1))).clip(min=0.0)
-    lut_false = (lut_mean / np.max(lut_mean, axis=(0,1))).clip(min=0.0)
-    intr_false = (intr_mean / np.max(intr_mean, axis=(0,1))).clip(min=0.0)
-    return org_false, lut_false, intr_false
+    # lut_mean = np.mean(lut[viewable].values[:,:,rgb], axis=3).astype(np.float32)
+    # intr_mean = np.mean(intr[viewable].values[:,:,rgb], axis=3).astype(np.float32)
+    # lut_false = (lut_mean / np.max(lut_mean, axis=(0,1))).clip(min=0.0)
+    # intr_false = (intr_mean / np.max(intr_mean, axis=(0,1))).clip(min=0.0)
+    return false_list
 
 def calculate_sam(source_cube, sam_window_start, sam_window_end, sam_ref_x, viewable,
                   use_radians=False, spectral_filter=None, use_scm=False):
@@ -149,12 +153,32 @@ class CubeInspector:
     """
 
     def __init__(self, org, lut, intr, viewable, session_name=None):
-        self.org = org
-        self.lut = lut
-        self.intr = intr
+
+        # store the cubes in a list. Order is org, lut, intr if present
+        self.cubes = []
+
+        if org is None:
+            raise ValueError(f"Original cube cannot be None.")
+
+        # self.org = org
+        self.cubes.append(org)
+
+        if lut is not None:
+            # self.lut = lut
+            self.cubes.append(lut)
+        else:
+            logging.info("LUT cube not set.")
+        if intr is not None:
+            # self.intr = intr
+            self.cubes.append(intr)
+        else:
+            logging.info("Interpolated cube not set.")
+
         self.viewable = viewable
         self.use_session_control = False
 
+        # NOTE This is only used for the color checker images in the article and can be
+        # removed. For now the behaviour is optional and disabled by setting use_color_checker_rgb to False
         self.use_color_checker_rgb = False
 
         if session_name is not None:
@@ -166,24 +190,25 @@ class CubeInspector:
         # Interpolative shift may cause very small negative values, which should be clipped. 
         # self.intr[self.viewable].values = self.intr[self.viewable].values.clip(min=0.0).astype(np.float32)
 
-        self.width_image = self.org[self.viewable][P.dim_y].size
-        self.height_image = self.org[self.viewable][P.dim_scan].size
+        self.width_image = self.cubes[0][self.viewable][P.dim_y].size
+        self.height_image = self.cubes[0][self.viewable][P.dim_scan].size
 
         # Selected pixel and band in CUBE's coordinates. show() deals with the 
         # transformation from plot coordinates.
-        self.idx = int(self.org[self.viewable][P.dim_scan].size / 2) # image y
-        self.y = int(self.org[self.viewable][P.dim_y].size / 2) # image x
-        self.x = int(self.org[self.viewable][P.dim_x].size / 2) # image band
+        self.idx = int(self.cubes[0][self.viewable][P.dim_scan].size / 2) # image y
+        self.y = int(self.cubes[0][self.viewable][P.dim_y].size / 2) # image x
+        self.x = int(self.cubes[0][self.viewable][P.dim_x].size / 2) # image band
         # Reference point for spectral angle. In same dimension as self.y.
         self.sam_ref_x = self.y
 
         # Modes: 1 for reflectance image, 2 for false color image, 3 for spectral angle
-        self.mode = 2
+        self.mode = 1
 
         # Containers for false color images
-        self.org_false = None
-        self.lut_false = None
-        self.intr_false = None
+        # self.org_false = None
+        # self.lut_false = None
+        # self.intr_false = None
+        self.false_images = []
         # False color images calculated lazyly only once.
         self.false_color_calculated = False
         # Toggle mode 3 between radians and dot product.
@@ -211,7 +236,7 @@ class CubeInspector:
         self.color_pixel_selection = 'violet'
 
         if self.use_color_checker_rgb:
-            # Boundaries of RGB boxes used for false color calculations.
+            # Boundaries of RGB boxes used for reference with a color cheker image.
             lins = np.linspace(0, self.height_image, num=13, dtype=np.int)
             self.rgb_horizontal_chunk = slice(int(self.width_image/10), self.width_image - int(self.width_image/10))
             self.rgb_vertical_chunks = [slice(lins[1], lins[3]), slice(lins[5], lins[7]), slice(lins[9], lins[11])]
@@ -224,7 +249,7 @@ class CubeInspector:
         self.sam_chunks_list = []
 
         # Filter out noisy ends of the spectrum in cosine maps.
-        self.spectral_filter_max = self.org[self.viewable][P.dim_x].size
+        self.spectral_filter_max = self.cubes[0][self.viewable][P.dim_x].size
         self.reinit_spectral_filter()
         # Step size to use when user moves the spectral filter.
         self.spectral_filter_step = 100
@@ -292,14 +317,23 @@ class CubeInspector:
             self.spectral_filter = slice(clamp(lin_spectr[0], 0, self.spectral_filter_max),
                                         clamp(lin_spectr[1], 0, self.spectral_filter_max))
 
+    def nth_image_as_index(self, n):
+        if n == 1:
+            return 0,1
+        if n == 2:
+            return 1,1
+        if n == 3:
+            return 1,0
+        return 0,0
+
     def init_plot(self):
         """Initialize the plots and connect mouse and keyboard."""
 
         self.fig, self.ax = plt.subplots(nrows=2, ncols=2, num='Cube', figsize=(16,12))
         self.connect_ui()
-        self.images.append(self.org[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[0,1]))
-        self.images.append(self.lut[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[1,1]))
-        self.images.append(self.intr[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[1,0]))
+        for i,cube in enumerate(self.cubes):
+            n,m = self.nth_image_as_index(i+1)
+            self.images.append(cube[self.viewable].isel({P.dim_x:self.x}).plot.imshow(ax=self.ax[n,m]))
         self.plot_inited = True
 
     def connect_ui(self):
@@ -479,29 +513,34 @@ class CubeInspector:
         """
 
         if self.mode == 1:
-            source = self.org[self.viewable].isel({P.dim_x:self.x})
-            self.images[0].set_data(source)
-            self.images[0].set_norm(cm.colors.Normalize(source.min(), source.max()))
-            source = self.lut[self.viewable].isel({P.dim_x:self.x})
-            self.images[1].set_data(source)
-            self.images[1].set_norm(cm.colors.Normalize(source.min(), source.max()))
-            source = self.intr[self.viewable].isel({P.dim_x:self.x})
-            self.images[2].set_data(source)
-            self.images[2].set_norm(cm.colors.Normalize(source.min(), source.max()))          
+            for i,cube in enumerate(self.cubes):
+                image_data = cube[self.viewable].isel({P.dim_x: self.x})
+                self.images[i].set_data(image_data)
+                self.images[i].set_norm(cm.colors.Normalize(image_data.min(), image_data.max()))
+
+            # source = self.lut[self.viewable].isel({P.dim_x:self.x})
+            # self.images[1].set_data(source)
+            # self.images[1].set_norm(cm.colors.Normalize(source.min(), source.max()))
+            # source = self.intr[self.viewable].isel({P.dim_x:self.x})
+            # self.images[2].set_data(source)
+            # self.images[2].set_norm(cm.colors.Normalize(source.min(), source.max()))
            
             self.ax[0,1].set_title(f'ORG, band={self.x}', color=self.colors_org_lut_intr[0])
             self.ax[1,1].set_title(f'LUT, band={self.x}', color=self.colors_org_lut_intr[1])
             self.ax[1,0].set_title(f'INTR, band={self.x}', color=self.colors_org_lut_intr[2])
         elif self.mode == 2:
             if not self.false_color_calculated:
-                self.org_false, self.lut_false, self.intr_false = calculate_false_color_images(
-                    self.org, self.lut, self.intr, self.viewable,
+                self.false_images = calculate_false_color_images(self.cubes, self.viewable,
                     self.spectral_blue, self.spectral_green, self.spectral_red)
+                # self.org_false, self.lut_false, self.intr_false = calculate_false_color_images(
+                #     self.org, self.lut, self.intr, self.viewable,
+                #     self.spectral_blue, self.spectral_green, self.spectral_red)
                 self.false_color_calculated = True
-
-            self.images[0].set_data(self.org_false)
-            self.images[1].set_data(self.lut_false)
-            self.images[2].set_data(self.intr_false)
+            for i,image in enumerate(self.false_images):
+                self.images[i].set_data(image)
+            # self.images[0].set_data(self.org_false)
+            # self.images[1].set_data(self.lut_false)
+            # self.images[2].set_data(self.intr_false)
             self.ax[0,1].set_title(f'ORG false color picture', color=self.colors_org_lut_intr[0])
             self.ax[1,1].set_title(f'LUT false color picture', color=self.colors_org_lut_intr[1])
             self.ax[1,0].set_title(f'INTR false color picture', color=self.colors_org_lut_intr[2])
@@ -517,12 +556,13 @@ class CubeInspector:
 
     def update_spectrograms(self):
         """Update spectrogram view (top left) and its overlays."""
-        
+
         self.ax[0,0].clear()
         if self.mode == 1 or self.mode == 2:
-            self.org[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[0])
-            self.lut[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[1])
-            self.intr[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[2])
+            for i,cube in enumerate(self.cubes):
+                cube[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[i])
+            # self.lut[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[1])
+            # self.intr[self.viewable].isel({P.dim_y:self.y, P.dim_scan:self.idx}).plot(ax=self.ax[0,0], color=self.colors_org_lut_intr[2])
 
             if self.use_color_checker_rgb:
                 # Reference color spectra
@@ -545,7 +585,7 @@ class CubeInspector:
             #Redraw band selection indicator
             _,ylim = self.ax[0,0].get_ylim()
             xd = np.ones(2)*self.x
-            yd = np.array([0, np.max(self.org[self.viewable].isel({P.dim_y: self.y, P.dim_scan: self.idx}))])
+            yd = np.array([0, np.max(self.cubes[0][self.viewable].isel({P.dim_y: self.y, P.dim_scan: self.idx}))])
             self.ax[0,0].plot(xd,yd,color=self.color_pixel_selection)
         elif self.mode == 3:
             # Draw mean of each cos box.
@@ -599,18 +639,20 @@ class CubeInspector:
 
         sams = []
         self.sam_chunks_list = []
-        sam, cosMapChunk = calculate_sam(self.org, self.sam_window_start, self.sam_window_end,
-                                         self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
-        sams.append(sam)
-        self.sam_chunks_list.append(cosMapChunk)
-        sam, cosMapChunk = calculate_sam(self.lut, self.sam_window_start, self.sam_window_end,
-                                         self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
-        sams.append(sam)
-        self.sam_chunks_list.append(cosMapChunk)
-        sam, cosMapChunk = calculate_sam(self.intr, self.sam_window_start, self.sam_window_end,
-                                         self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
-        sams.append(sam)
-        self.sam_chunks_list.append(cosMapChunk)
+        for i,cube in enumerate(self.cubes):
+            sam, cosMapChunk = calculate_sam(cube, self.sam_window_start, self.sam_window_end,
+                                             self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
+            sams.append(sam)
+            self.sam_chunks_list.append(cosMapChunk)
+
+        # sam, cosMapChunk = calculate_sam(self.lut, self.sam_window_start, self.sam_window_end,
+        #                                  self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
+        # sams.append(sam)
+        # self.sam_chunks_list.append(cosMapChunk)
+        # sam, cosMapChunk = calculate_sam(self.intr, self.sam_window_start, self.sam_window_end,
+        #                                  self.sam_ref_x, self.viewable, self.toggle_radians, self.spectral_filter)
+        # sams.append(sam)
+        # self.sam_chunks_list.append(cosMapChunk)
 
         maxVal = np.max(np.array(list(np.max(chunk) for chunk in self.sam_chunks_list)))
 
