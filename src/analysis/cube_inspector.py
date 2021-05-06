@@ -168,6 +168,10 @@ class CubeInspector:
         else:
             logging.info("Interpolated cube not set.")
 
+        self.row_count = 1
+        if len(self.cubes) > 1:
+            self.row_count = 2
+
         self.viewable = viewable
         self.use_session_control = False
 
@@ -320,11 +324,17 @@ class CubeInspector:
     def init_plot(self):
         """Initialize the plots and connect mouse and keyboard."""
 
-        self.fig, self.ax = plt.subplots(nrows=2, ncols=2, num='Cube', figsize=(16,12))
+
+        self.fig, temp_ax = plt.subplots(nrows=self.row_count, ncols=2, num='Cube', figsize=(16,12))
+        if self.row_count == 1:
+            self.ax = np.array([[temp_ax[0],temp_ax[1]]])
+        elif self.row_count == 2:
+            self.ax = np.array([[temp_ax[0,0],temp_ax[0,1]],
+                       [temp_ax[1,0],temp_ax[1,1]]])
         self.connect_ui()
         for i,cube in enumerate(self.cubes):
             n,m = self.nth_image_as_index(i+1)
-            ax_image = self.ax[n,m].imshow(cube[self.viewable].isel({P.dim_x:self.x}))
+            ax_image = self.ax[n,m].imshow(cube[self.viewable].isel({P.dim_x:self.x}), origin='lower')
             self.images.append(ax_image)
         self.plot_inited = True
 
@@ -511,8 +521,9 @@ class CubeInspector:
                 self.images[i].set_norm(cm.colors.Normalize(image_data.min(), image_data.max()))
            
             self.ax[0,1].set_title(f'ORG, band={self.x}', color=self.colors_org_lut_intr[0])
-            self.ax[1,1].set_title(f'LUT, band={self.x}', color=self.colors_org_lut_intr[1])
-            self.ax[1,0].set_title(f'INTR, band={self.x}', color=self.colors_org_lut_intr[2])
+            if self.row_count == 2:
+                self.ax[1,1].set_title(f'LUT, band={self.x}', color=self.colors_org_lut_intr[1])
+                self.ax[1,0].set_title(f'INTR, band={self.x}', color=self.colors_org_lut_intr[2])
         elif self.mode == 2:
             if not self.false_color_calculated:
                 self.false_images = calculate_false_color_images(self.cubes, self.viewable,
@@ -525,8 +536,9 @@ class CubeInspector:
                 self.images[i].set_data(image)
 
             self.ax[0,1].set_title(f'ORG false color picture', color=self.colors_org_lut_intr[0])
-            self.ax[1,1].set_title(f'LUT false color picture', color=self.colors_org_lut_intr[1])
-            self.ax[1,0].set_title(f'INTR false color picture', color=self.colors_org_lut_intr[2])
+            if self.row_count == 2:
+                self.ax[1,1].set_title(f'LUT false color picture', color=self.colors_org_lut_intr[1])
+                self.ax[1,0].set_title(f'INTR false color picture', color=self.colors_org_lut_intr[2])
         elif self.mode == 3:
             self.calculate_sams()
             if self.toggle_radians:
@@ -534,8 +546,9 @@ class CubeInspector:
             else:
                 cosType = 'normalized dot product'
             self.ax[0,1].set_title(f'ORG {cosType}', color=self.colors_org_lut_intr[0])
-            self.ax[1,1].set_title(f'LUT {cosType}', color=self.colors_org_lut_intr[1])
-            self.ax[1,0].set_title(f'INTR {cosType}', color=self.colors_org_lut_intr[2])
+            if self.row_count == 2:
+                self.ax[1,1].set_title(f'LUT {cosType}', color=self.colors_org_lut_intr[1])
+                self.ax[1,0].set_title(f'INTR {cosType}', color=self.colors_org_lut_intr[2])
 
     def update_spectrograms(self):
         """Update spectrogram view (top left) and its overlays."""
@@ -612,8 +625,12 @@ class CubeInspector:
                 for j in range(2):
                     if i==0 and j==0:
                         continue
-                    selection = self.ax[i,j].scatter([self.y], [self.idx], color=self.color_pixel_selection)
-                    self.decorations_selection.append(selection)
+                    try:
+                        selection = self.ax[i,j].scatter([self.y], [self.idx], color=self.color_pixel_selection)
+                        self.decorations_selection.append(selection)
+                    except IndexError as ie:
+                        # Triggers if less than two rows
+                        continue
 
     def calculate_sams(self):
         """Calculates and saves spectral angle maps for all three cubes and sets them to image list."""
