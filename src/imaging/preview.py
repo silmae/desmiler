@@ -291,7 +291,7 @@ class Preview:
         if center is None:
             center = int(max_dim/2)
         if spacing is None:
-            spacing = int(max_dim/3)
+            spacing = int(max_dim/100)
 
         out = np.zeros(3,dtype=int)
         out[0] = (center - spacing)

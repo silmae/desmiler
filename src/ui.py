@@ -223,7 +223,7 @@ class UI:
         elif self.preview is not None:
             return self.preview._cami.exposure(value)
         else:
-            logging.warning(f"Cannot set exposure as no Session or Preview exists.")
+            logging.warning(f"Cannot set exposure as no Session camera or Preview exists.")
 
 if __name__ == '__main__':
     # set logging parameters here
@@ -236,4 +236,4 @@ if __name__ == '__main__':
     # ui.run_scan()
     # ui.start_preview()
     # ui.make_desmiled_cube()
-    ui.show_cube()
+    # ui.show_cube()
