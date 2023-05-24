@@ -1,8 +1,10 @@
 # desmiler
 
+A Python program for correcting smile distortion, which is a common problem 
+in hyperspectral imaging.
 This software is related to scientific paper "A Do-It-Yourself Hyperspectral 
 Imager Brought to Practice with Open-Source Python" available at 
-https://www.mdpi.com/1424-8220/21/4/1072, DOI https://doi.org/10.3390/s21041072. 
+https://www.mdpi.com/1424-8220/21/4/1072, DOI https://doi.org/10.3390/s21041072.
 
 ## Paper abstract
 
@@ -45,7 +47,7 @@ or by specifically calling generation function.
 	* /examples
 		_Example frames are generated here by calling `ui.generate_examples()`._
 		- fluorescence_spectrogram.nc  
-		    _Averaged real spetra of a fluorescence tube that acts as a source for 
+		    _Averaged real spectra of a fluorescence tube that acts as a source for 
 		    example generation._
     * /scans  
         _Created upon first intialization of the `UI` class_
